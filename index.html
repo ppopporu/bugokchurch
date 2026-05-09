@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>기독교한국침례교 부곡이웃교회</title>
+  <title>부곡이웃교회</title>
+  <link rel="icon" type="image/jpeg" href="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCABAAEADASIAAhEBAxEB/8QAGwABAAIDAQEAAAAAAAAAAAAAAAYHAgMEBQj/xAAtEAACAQQCAQMCBQUBAAAAAAABAgMABAURBhIhBxNBMWEUMlGBkRUiMzRxof/EABgBAQEBAQEAAAAAAAAAAAAAAAACAwEE/8QAJhEAAgICAQMCBwAAAAAAAAAAAQIAAwQRMRIhQQVRExUiYdHh8P/aAAwDAQACEQMRAD8A+y6UpSIpSlIilKUiKUpSIpSoxz7KZjGxWgxHXtKzByY+x+NaqXYKNmb41DZForUgE+/Ek9cWcydviMdJfXSXTxIQCLe3eZ/J0NIgJP8AFRvF8kvrbCWjX1tLd3cqs7NsIB/eQB9PtXLkeXZu1y5t0xtvLAwjK7Zgw7KCRv58k/FZY+RXkWNVWfqXn+4mPqA+Xjqu43rY7/vXb2mn0/56uYyeTsbxMo8hy00NkTipo0SEKpVXboAp/N+Yg+Rv4qwaqbnuU5RxeFxxlEEmRytzJKWg9w66prQP7/xWON9SMvieL4oZLE3OXyl1C8zyK6RJ/kdVHgfoB8V7bafg44yHI0Tr7+fxKxUfNyzi0KS2t+APHk6lt0qAtzHPLexr/SYDHJHFIULN2j7IrEb+dEn4qfV4aMlLiwXxMVsBdk8qdGKgXrZnb7j3HrPJWCQye1dhrlZrd5E/DhWLna66kHqdll8A/wDKnta7mCC6t5Le5hjmhkUq8cihlYH6gg+CK3I2JsjdDBpTec5XmbP01wGTyIubLKXL+3dtBYQrGhDnsvWcr10pLDW+3XW/O675cvza8xvFMhZYxJ47mxilunW2Rkkk7KHJZX1Ent9pFYdu3hfsbOvYLuVx+HvBAnXRUwh9/fya47TFXVnaQ2djfRW1rAgjhhjtFCxoBpVHn6Aa/ioWsKxYcy3cONMJVHqDyrkDYbgskVpc+7k4rd5mSyQpJdSojhB3O9dVm2iabfTz9ay9VuSY/F5fHYy2yMdvdvFA7WVzZxdQrykn3JGYNFpC3gfarKyvFrXLSCXKpYX0ntmHtPYo59skEoN70CQD+w/SvT/CZBURY8kECjX+up3/AO1Z2y9J4na7RWwdOxlO8u5ll8b6rT4K0vsa+Pht7NYLZ7VXfbywqT335JV3HX6gKG110TeIrFFIRQ5DMANnWtn9ayriqF3qZMQeBFKUqpMUpSkRSlKRFKUpE//Z" />
 
   <!-- Tailwind CDN production warning 숨기기 (Tailwind 로드 전에 실행되어야 함) -->
   <script>
@@ -585,7 +586,8 @@ function Header({ ctx, navOpen, setNavOpen }) {
                 ? <img src={settings.logoImage || LOGO_IMAGE} alt="로고" className="w-full h-full object-cover"/>
                 : (settings.logoSymbol || '✚')}
             </div>
-            <div className="text-left">
+            <div className="text-left leading-tight">
+              <div className="text-[10px] sm:text-[11px] text-amber-200/80 tracking-wide">기독교한국침례교</div>
               <div className="text-base sm:text-lg font-bold tracking-tight" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>
                 {settings.churchName}
               </div>
@@ -696,8 +698,11 @@ function Footer({ ctx }) {
                   ? <img src={settings.logoImage || LOGO_IMAGE} alt="로고" className="w-full h-full object-cover"/>
                   : (settings.logoSymbol || '✚')}
               </div>
-              <div className="text-lg font-bold text-white" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>
-                {settings.churchName}
+              <div className="leading-tight">
+                <div className="text-[11px] text-slate-400">기독교한국침례교</div>
+                <div className="text-lg font-bold text-white" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>
+                  {settings.churchName}
+                </div>
               </div>
             </div>
             <p className="text-sm text-slate-400 leading-relaxed">{settings.tagline}</p>
@@ -825,7 +830,7 @@ function HomePage({ ctx }) {
         {/* 배경 사진 — 사진을 더 잘 보이게 (네이비 톤 추가 약화) */}
         <div className="absolute inset-0 pointer-events-none"
              style={{
-               backgroundImage: `url(${HERO_BG})`,
+               backgroundImage: `url(${settings.heroImage || HERO_BG})`,
                backgroundSize: 'cover',
                backgroundPosition: 'center',
                filter: 'grayscale(50%) brightness(0.78) contrast(1.05)',
@@ -2627,7 +2632,9 @@ function MemberFormModal({ mode, initial, onClose, onSave }) {
 function AdminSettings({ ctx }) {
   const { settings, persist, showToast } = ctx;
   const [form, setForm] = useState({ ...settings });
+  const [uploadingHero, setUploadingHero] = useState(false);
   const fileRef = useRef(null);
+  const heroFileRef = useRef(null);
 
   const save = async (e) => {
     e.preventDefault();
@@ -2647,6 +2654,54 @@ function AdminSettings({ ctx }) {
     if (fileRef.current) fileRef.current.value = '';
   };
 
+  // Hero 이미지: 자동 리사이즈(가로 최대 1600px) + JPEG quality 0.7 압축
+  const onHeroUpload = (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!/^image\//.test(f.type)) { showToast('이미지 파일만 업로드 가능합니다.', 'error'); return; }
+    if (f.size > 10 * 1024 * 1024) { showToast('원본 이미지는 10MB 이하만 가능합니다.', 'error'); return; }
+
+    setUploadingHero(true);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const maxW = 1600;
+          const ratio = img.width > maxW ? maxW / img.width : 1;
+          const w = Math.round(img.width * ratio);
+          const h = Math.round(img.height * ratio);
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          const cx = canvas.getContext('2d');
+          cx.fillStyle = '#000'; // JPEG 변환 시 투명영역 검정 처리
+          cx.fillRect(0, 0, w, h);
+          cx.drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          // 약 800KB 초과면 한 번 더 압축
+          let final = dataUrl;
+          if (final.length > 800 * 1024) {
+            final = canvas.toDataURL('image/jpeg', 0.55);
+          }
+          setForm(s => ({ ...s, heroImage: final }));
+          showToast(`배경 이미지 업로드 완료 (${(final.length/1024).toFixed(0)} KB)`);
+        } catch (err) {
+          showToast('이미지 처리 중 오류가 발생했습니다.', 'error');
+        } finally {
+          setUploadingHero(false);
+        }
+      };
+      img.onerror = () => { setUploadingHero(false); showToast('이미지를 불러올 수 없습니다.', 'error'); };
+      img.src = ev.target.result;
+    };
+    reader.onerror = () => { setUploadingHero(false); showToast('파일 읽기 실패', 'error'); };
+    reader.readAsDataURL(f);
+  };
+  const removeHeroImage = () => {
+    setForm(s => ({ ...s, heroImage: '' }));
+    if (heroFileRef.current) heroFileRef.current.value = '';
+  };
+
   return (
     <form onSubmit={save} className="bg-white rounded-2xl border border-stone-200 p-6 max-w-2xl">
       <h3 className="text-base font-bold text-slate-900 mb-4" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>교회 정보</h3>
@@ -2662,6 +2717,19 @@ function AdminSettings({ ctx }) {
           <input ref={fileRef} type="file" accept="image/*" onChange={onLogoUpload} className="text-sm flex-1"/>
           {form.logoImage && (
             <button type="button" onClick={removeLogoImage} className="px-3 py-1.5 rounded-md text-xs border border-stone-300 text-slate-700 hover:bg-stone-50">제거</button>
+          )}
+        </div>
+      </Field>
+
+      <Field label="랜딩페이지 배경 이미지" hint="원본 이미지를 가로 1600px / JPEG로 자동 압축합니다 (제거 시 기본 이미지 사용)">
+        <div className="flex items-center gap-3">
+          <div className="w-24 h-14 rounded-lg bg-stone-100 border border-stone-200 overflow-hidden shrink-0 shadow-inner">
+            <img src={form.heroImage || HERO_BG} alt="배경 미리보기" className="w-full h-full object-cover"/>
+          </div>
+          <input ref={heroFileRef} type="file" accept="image/*" onChange={onHeroUpload} disabled={uploadingHero} className="text-sm flex-1"/>
+          {uploadingHero && <span className="text-xs text-slate-500">처리 중...</span>}
+          {form.heroImage && (
+            <button type="button" onClick={removeHeroImage} className="px-3 py-1.5 rounded-md text-xs border border-stone-300 text-slate-700 hover:bg-stone-50">제거</button>
           )}
         </div>
       </Field>
@@ -2685,6 +2753,7 @@ function AdminSettings({ ctx }) {
               : <span className="text-[#0f1d3d] text-2xl font-bold">{form.logoSymbol || '✚'}</span>}
           </div>
           <div>
+            <div className="text-[11px] text-slate-500 leading-tight">기독교한국침례교</div>
             <div className="text-base font-bold text-[#0f1d3d]" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>{form.churchName}</div>
             <div className="text-xs text-slate-500">{form.tagline}</div>
           </div>
