@@ -689,8 +689,10 @@ function Footer({ ctx }) {
         <div className="grid md:grid-cols-3 gap-8">
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-[#0f1d3d] text-xl font-bold">
-                {settings.logoSymbol || '✚'}
+              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center overflow-hidden text-[#0f1d3d] text-xl font-bold">
+                {settings.logoImage
+                  ? <img src={settings.logoImage} alt="로고" className="w-full h-full object-cover"/>
+                  : (settings.logoSymbol || '✚')}
               </div>
               <div className="text-lg font-bold text-white" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>
                 {settings.churchName}
