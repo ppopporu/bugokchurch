@@ -817,24 +817,24 @@ function HomePage({ ctx }) {
     <>
       {/* HERO */}
       <section className="relative overflow-hidden text-white bg-[#0a1530]">
-        {/* 배경 사진 — 더 밝고 선명하게 (네이비 톤 약화) */}
+        {/* 배경 사진 — 사진을 더 잘 보이게 (네이비 톤 추가 약화) */}
         <div className="absolute inset-0 pointer-events-none"
              style={{
                backgroundImage: `url(${HERO_BG})`,
                backgroundSize: 'cover',
                backgroundPosition: 'center',
-               filter: 'grayscale(60%) brightness(0.78) contrast(1.05)',
-               opacity: 0.7,
+               filter: 'grayscale(30%) brightness(0.85) contrast(1.05)',
+               opacity: 0.85,
              }}></div>
-        {/* 네이비 컬러라이즈 — 살짝만 입힘 */}
+        {/* 네이비 컬러라이즈 — 아주 살짝만 입힘 */}
         <div className="absolute inset-0 pointer-events-none"
              style={{
                backgroundColor: '#0f1d3d',
                mixBlendMode: 'multiply',
-               opacity: 0.3,
+               opacity: 0.2,
              }}></div>
         {/* 가독성용 그라디언트 — 좌상단 텍스트 영역만 어둡게 */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0a1530]/65 via-[#0f1d3d]/35 to-[#1a2c5a]/15 pointer-events-none"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0a1530]/55 via-[#0f1d3d]/25 to-[#1a2c5a]/10 pointer-events-none"></div>
 
         {/* 장식 */}
         <div className="absolute inset-0 opacity-25 pointer-events-none">
