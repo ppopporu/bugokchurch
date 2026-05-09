@@ -1692,22 +1692,43 @@ function QTPage({ ctx }) {
 }
 
 function QTFormModal({ open, editing, onClose, ctx }) {
-  const { qts, persist, currentUser, showToast } = ctx;
-  const [form, setForm] = useState({ title: '', scripture: '', content: '' });
+  const { qts, persist, currentUser, isAdmin, showToast } = ctx;
+  // 일반 사용자는 자기 목장 고정. 관리자는 직접 선택 가능 (기본값: 본인 목장 또는 첫 번째 목장)
+  const defaultGroup = currentUser?.group || (isAdmin ? GROUPS[0].id : '');
+  const [form, setForm] = useState({ title: '', scripture: '', content: '', group: defaultGroup });
 
   useEffect(() => {
-    if (editing) setForm({ title: editing.title, scripture: editing.scripture || '', content: editing.content });
-    else setForm({ title: '', scripture: '', content: '' });
+    if (editing) {
+      setForm({
+        title: editing.title,
+        scripture: editing.scripture || '',
+        content: editing.content,
+        group: editing.group || defaultGroup,
+      });
+    } else {
+      setForm({ title: '', scripture: '', content: '', group: defaultGroup });
+    }
   }, [editing, open]);
 
   const submit = async (e) => {
     e.preventDefault();
+    // 등록·수정 모두에서 목장 결정: 관리자가 선택했으면 그 값, 아니면 작성자(또는 기존) 목장
+    const targetGroup = isAdmin ? form.group : (editing ? editing.group : currentUser?.group);
+    if (!targetGroup) {
+      showToast('목장 정보가 필요합니다. 마이페이지에서 설정해주세요.', 'error');
+      return;
+    }
     if (editing) {
-      const next = qts.map(q => q.id === editing.id ? { ...q, ...form } : q);
+      const next = qts.map(q => q.id === editing.id ? { ...q, title: form.title, scripture: form.scripture, content: form.content, group: targetGroup } : q);
       await persist.qts(next); showToast('QT가 수정되었습니다.');
     } else {
-      if (!currentUser.group) { showToast('목장 정보가 필요합니다. 마이페이지에서 설정해주세요.', 'error'); return; }
-      const item = { id: uid(), ...form, group: currentUser.group, authorId: currentUser.id, authorName: currentUser.name, createdAt: new Date().toISOString(), comments: [] };
+      const item = {
+        id: uid(),
+        title: form.title, scripture: form.scripture, content: form.content,
+        group: targetGroup,
+        authorId: currentUser.id, authorName: currentUser.name,
+        createdAt: new Date().toISOString(), comments: [],
+      };
       await persist.qts([item, ...qts]); showToast('QT가 등록되었습니다.');
     }
     onClose();
@@ -1716,6 +1737,13 @@ function QTFormModal({ open, editing, onClose, ctx }) {
   return (
     <Modal open={open} onClose={onClose} title={editing ? 'QT 수정' : 'QT 작성'}>
       <form onSubmit={submit}>
+        {isAdmin && (
+          <Field label="목장 선택" hint="관리자는 모든 목장에 등록할 수 있습니다">
+            <select required value={form.group} onChange={e => setForm({...form, group: e.target.value})} className={inputCls}>
+              {GROUPS.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
+          </Field>
+        )}
         <Field label="말씀 본문" hint="예: 시편 23:1-6"><input value={form.scripture} onChange={e => setForm({...form, scripture: e.target.value})} className={inputCls}/></Field>
         <Field label="제목"><input required value={form.title} onChange={e => setForm({...form, title: e.target.value})} className={inputCls} placeholder="오늘 묵상의 주제"/></Field>
         <Field label="묵상 / 적용"><textarea required rows={9} value={form.content} onChange={e => setForm({...form, content: e.target.value})} className={inputCls} style={{resize:'vertical'}} placeholder="오늘 말씀이 나에게 주신 의미와 적용을 적어보세요."/></Field>
