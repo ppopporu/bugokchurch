@@ -544,6 +544,7 @@ function ChurchApp() {
 
       <Footer ctx={ctx} />
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
+      <BGMPlayer videoId={settings.bgmVideoId || ''} />
     </div>
   );
 }
@@ -560,6 +561,209 @@ function FontLoader() {
     }
   }, []);
   return null;
+}
+
+/* ============================== 배경음악 (YouTube) ============================== */
+/**
+ * BGMPlayer
+ * - 화면 우하단에 고정된 작은 컨트롤 위젯
+ * - 숨겨진 YouTube IFrame 으로 음악 재생 (loop, autoplay-on-first-interaction)
+ * - 재생 중에는 5바 이퀄라이저 애니메이션 표시
+ * - settings.bgmVideoId 가 비어 있으면 위젯 자체를 표시하지 않음
+ */
+function BGMPlayer({ videoId }) {
+  const playerRef = useRef(null);          // YT.Player 인스턴스
+  const containerRef = useRef(null);       // iframe 부착 div
+  const [ready, setReady] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const triedAutoplay = useRef(false);
+
+  // 1) YouTube IFrame API 로드 (전역 1회)
+  useEffect(() => {
+    if (!videoId) return;
+    if (window.YT && window.YT.Player) return; // 이미 로드됨
+    if (document.getElementById('youtube-iframe-api')) return;
+    const tag = document.createElement('script');
+    tag.id = 'youtube-iframe-api';
+    tag.src = 'https://www.youtube.com/iframe_api';
+    document.body.appendChild(tag);
+  }, [videoId]);
+
+  // 2) videoId 가 바뀔 때마다 플레이어 (재)생성
+  useEffect(() => {
+    if (!videoId) {
+      // videoId 가 비워지면 기존 플레이어 정리
+      if (playerRef.current) {
+        try { playerRef.current.destroy(); } catch {}
+        playerRef.current = null;
+      }
+      setReady(false);
+      setPlaying(false);
+      return;
+    }
+
+    let cancelled = false;
+    const init = () => {
+      if (cancelled || !containerRef.current) return;
+      // 기존 인스턴스 제거 후 새로 생성
+      if (playerRef.current) {
+        try { playerRef.current.destroy(); } catch {}
+        playerRef.current = null;
+      }
+      // YT 컨테이너용 div 새로 만들기 (destroy 후 부모 div 가 남아있어야 함)
+      containerRef.current.innerHTML = '<div id="bgm-yt-target"></div>';
+      playerRef.current = new window.YT.Player('bgm-yt-target', {
+        height: '0', width: '0',
+        videoId,
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          loop: 1,
+          playlist: videoId,    // loop 사용 시 playlist 파라미터 필수
+          modestbranding: 1,
+          playsinline: 1,
+          rel: 0,
+        },
+        events: {
+          onReady: (e) => {
+            if (cancelled) return;
+            setReady(true);
+            try { e.target.setVolume(50); } catch {}
+            // 첫 사용자 상호작용 시 자동재생 시도
+            const tryAutoplay = () => {
+              if (triedAutoplay.current || cancelled) return;
+              triedAutoplay.current = true;
+              try { e.target.playVideo(); } catch {}
+            };
+            const handler = () => { tryAutoplay(); };
+            document.addEventListener('click', handler, { once: true });
+            document.addEventListener('touchstart', handler, { once: true, passive: true });
+            document.addEventListener('keydown', handler, { once: true });
+          },
+          onStateChange: (e) => {
+            if (cancelled) return;
+            const YT = window.YT;
+            // 재생 중인지 갱신
+            setPlaying(e.data === YT.PlayerState.PLAYING);
+            // 영상이 끝나면 즉시 다시 재생 (loop 보강)
+            if (e.data === YT.PlayerState.ENDED) {
+              try { e.target.seekTo(0); e.target.playVideo(); } catch {}
+            }
+          },
+        },
+      });
+    };
+
+    if (window.YT && window.YT.Player) {
+      init();
+    } else {
+      // API 가 아직 로드 안 된 경우 onYouTubeIframeAPIReady 에서 호출
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        if (typeof prev === 'function') { try { prev(); } catch {} }
+        init();
+      };
+    }
+
+    return () => {
+      cancelled = true;
+      if (playerRef.current) {
+        try { playerRef.current.destroy(); } catch {}
+        playerRef.current = null;
+      }
+    };
+  }, [videoId]);
+
+  // videoId 가 없으면 위젯 미표시
+  if (!videoId) return null;
+
+  const togglePlay = () => {
+    if (!playerRef.current) return;
+    try {
+      if (playing) playerRef.current.pauseVideo();
+      else playerRef.current.playVideo();
+    } catch {}
+  };
+  const toggleMute = () => {
+    if (!playerRef.current) return;
+    try {
+      if (muted) { playerRef.current.unMute(); setMuted(false); }
+      else       { playerRef.current.mute();   setMuted(true); }
+    } catch {}
+  };
+
+  return (
+    <>
+      {/* 숨겨진 YouTube iframe 컨테이너 */}
+      <div ref={containerRef} style={{
+        position: 'fixed', left: '-9999px', top: '-9999px',
+        width: 0, height: 0, overflow: 'hidden', pointerEvents: 'none',
+      }} aria-hidden="true"/>
+
+      {/* 우하단 컨트롤 위젯 */}
+      <div style={{
+        position: 'fixed', right: '14px', bottom: '14px', zIndex: 50,
+        background: 'rgba(15, 29, 61, 0.92)',
+        borderRadius: '999px', padding: '6px 12px 6px 6px',
+        display: 'flex', alignItems: 'center', gap: '10px',
+        boxShadow: '0 6px 20px rgba(0,0,0,0.25)',
+        backdropFilter: 'blur(6px)',
+        border: '1px solid rgba(251, 191, 36, 0.25)',
+      }}>
+        {/* 재생/정지 */}
+        <button onClick={togglePlay} aria-label={playing ? '일시정지' : '재생'}
+                style={{
+                  width: 32, height: 32, borderRadius: '50%',
+                  background: '#fbbf24', color: '#0f1d3d',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: 'none', cursor: ready ? 'pointer' : 'wait',
+                  opacity: ready ? 1 : 0.6,
+                }}>
+          {playing
+            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+            : <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>}
+        </button>
+
+        {/* 이퀄라이저 (5 bar) */}
+        <div style={{
+          display: 'flex', alignItems: 'flex-end', gap: '2px', height: '20px',
+          opacity: playing ? 1 : 0.35,
+        }}>
+          {[0,1,2,3,4].map(i => (
+            <span key={i} style={{
+              width: '3px',
+              background: 'linear-gradient(to top, #fbbf24, #fef3c7)',
+              borderRadius: '2px',
+              animation: playing ? `bgm-eq 0.9s ease-in-out ${i*0.12}s infinite alternate` : 'none',
+              height: playing ? '6px' : '4px',
+            }}/>
+          ))}
+        </div>
+
+        {/* 음소거 토글 */}
+        <button onClick={toggleMute} aria-label={muted ? '음소거 해제' : '음소거'}
+                title={muted ? '음소거 해제' : '음소거'}
+                style={{
+                  background: 'transparent', color: '#fef3c7',
+                  border: 'none', cursor: 'pointer', fontSize: '11px',
+                  padding: '0 4px', opacity: 0.85,
+                }}>
+          {muted
+            ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" y1="9" x2="16" y2="15"/><line x1="16" y1="9" x2="22" y2="15"/></svg>
+            : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>}
+        </button>
+      </div>
+
+      {/* 이퀄라이저 keyframes 주입 (1회) */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes bgm-eq {
+          0%   { height: 4px; }
+          100% { height: 18px; }
+        }
+      `}}/>
+    </>
+  );
 }
 
 /* ============================== 헤더 ============================== */
@@ -2639,7 +2843,9 @@ function AdminSettings({ ctx }) {
 
   const save = async (e) => {
     e.preventDefault();
-    await persist.settings(form);
+    // 임시 입력 필드(bgmInput) 는 영구 저장 대상에서 제외
+    const { bgmInput, ...toSave } = form;
+    await persist.settings(toSave);
     showToast('설정이 저장되었습니다.');
   };
   const onLogoUpload = (e) => {
@@ -2743,6 +2949,31 @@ function AdminSettings({ ctx }) {
       </Field>
       <Field label="히어로 말씀구절">
         <input value={form.heroVerse || ''} onChange={e => setForm({...form, heroVerse: e.target.value})} className={inputCls} placeholder='"..." — 마태복음 22:39'/>
+      </Field>
+
+      <Field label="배경음악 (YouTube)" hint="유튜브 URL 또는 영상 ID. 비워두면 위젯이 표시되지 않습니다.">
+        <div className="space-y-2">
+          <input
+            value={form.bgmInput ?? form.bgmVideoId ?? ''}
+            onChange={e => {
+              const v = e.target.value;
+              const id = extractYoutubeId(v) || '';
+              setForm({...form, bgmInput: v, bgmVideoId: id});
+            }}
+            className={inputCls}
+            placeholder="https://www.youtube.com/watch?v=... 또는 영상 ID"
+          />
+          {form.bgmVideoId
+            ? <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-1">
+                ✓ 인식된 영상 ID: <span className="font-mono">{form.bgmVideoId}</span>
+                <button type="button"
+                        onClick={() => setForm({...form, bgmInput: '', bgmVideoId: ''})}
+                        className="ml-2 underline text-rose-600">제거</button>
+              </div>
+            : (form.bgmInput
+                ? <div className="text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded px-2 py-1">유효한 YouTube URL 또는 ID가 아닙니다.</div>
+                : null)}
+        </div>
       </Field>
 
       <div className="bg-stone-50 rounded-md p-4 mb-4">
