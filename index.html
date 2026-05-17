@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>기독교한국침례회 부곡이웃교회</title>
+  <title>기독교한국침례교 부곡이웃교회</title>
   <link rel="icon" type="image/jpeg" href="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCABAAEADASIAAhEBAxEB/8QAGwABAAIDAQEAAAAAAAAAAAAAAAYHAgMEBQj/xAAtEAACAQQCAQMCBQUBAAAAAAABAgMABAURBhIhBxNBMWEUMlGBkRUiMzRxof/EABgBAQEBAQEAAAAAAAAAAAAAAAACAwEE/8QAJhEAAgICAQMCBwAAAAAAAAAAAQIAAwQRMRIhQQVRExUiYdHh8P/aAAwDAQACEQMRAD8A+y6UpSIpSlIilKUiKUpSIpSoxz7KZjGxWgxHXtKzByY+x+NaqXYKNmb41DZForUgE+/Ek9cWcydviMdJfXSXTxIQCLe3eZ/J0NIgJP8AFRvF8kvrbCWjX1tLd3cqs7NsIB/eQB9PtXLkeXZu1y5t0xtvLAwjK7Zgw7KCRv58k/FZY+RXkWNVWfqXn+4mPqA+Xjqu43rY7/vXb2mn0/56uYyeTsbxMo8hy00NkTipo0SEKpVXboAp/N+Yg+Rv4qwaqbnuU5RxeFxxlEEmRytzJKWg9w66prQP7/xWON9SMvieL4oZLE3OXyl1C8zyK6RJ/kdVHgfoB8V7bafg44yHI0Tr7+fxKxUfNyzi0KS2t+APHk6lt0qAtzHPLexr/SYDHJHFIULN2j7IrEb+dEn4qfV4aMlLiwXxMVsBdk8qdGKgXrZnb7j3HrPJWCQye1dhrlZrd5E/DhWLna66kHqdll8A/wDKnta7mCC6t5Le5hjmhkUq8cihlYH6gg+CK3I2JsjdDBpTec5XmbP01wGTyIubLKXL+3dtBYQrGhDnsvWcr10pLDW+3XW/O675cvza8xvFMhZYxJ47mxilunW2Rkkk7KHJZX1Ent9pFYdu3hfsbOvYLuVx+HvBAnXRUwh9/fya47TFXVnaQ2djfRW1rAgjhhjtFCxoBpVHn6Aa/ioWsKxYcy3cONMJVHqDyrkDYbgskVpc+7k4rd5mSyQpJdSojhB3O9dVm2iabfTz9ay9VuSY/F5fHYy2yMdvdvFA7WVzZxdQrykn3JGYNFpC3gfarKyvFrXLSCXKpYX0ntmHtPYo59skEoN70CQD+w/SvT/CZBURY8kECjX+up3/AO1Z2y9J4na7RWwdOxlO8u5ll8b6rT4K0vsa+Pht7NYLZ7VXfbywqT335JV3HX6gKG110TeIrFFIRQ5DMANnWtn9ayriqF3qZMQeBFKUqpMUpSkRSlKRFKUpE//Z" />
 
   <!-- Tailwind CDN production warning 숨기기 (Tailwind 로드 전에 실행되어야 함) -->
@@ -218,6 +218,26 @@ const GROUPS = [
 ];
 const groupName = (id) => GROUPS.find(g => g.id === id)?.name || '미지정';
 
+// 권한 정의 - 모든 'pastor'/'pastor_staff'/'admin' 은 관리/편집 권한을 가짐
+const ROLES = [
+  { id: 'member',       name: '성도',   adminLike: false, badgeCls: 'text-slate-600' },
+  { id: 'admin',        name: '관리자', adminLike: true,  badgeCls: 'bg-amber-50 border border-amber-300 text-amber-800 font-semibold' },
+  { id: 'pastor_staff', name: '목회자', adminLike: true,  badgeCls: 'bg-indigo-50 border border-indigo-300 text-indigo-800 font-semibold' },
+  { id: 'pastor',       name: '목사',   adminLike: true,  badgeCls: 'bg-violet-50 border border-violet-300 text-violet-800 font-semibold' },
+];
+const roleInfo = (id) => ROLES.find(r => r.id === id) || ROLES[0];
+const isRoleAdmin = (role) => roleInfo(role).adminLike;
+const MAX_GROUPS = 3;
+// 사용자의 가입 목장 목록을 항상 배열로 반환 (구버전 user.group 호환)
+const userGroups = (u) => {
+  if (!u) return [];
+  if (Array.isArray(u.groups) && u.groups.length) return u.groups.slice(0, MAX_GROUPS);
+  if (u.group) return [u.group];
+  return [];
+};
+// 대표 목장 (단일 표시용)
+const primaryGroup = (u) => userGroups(u)[0] || null;
+
 const NOTICE_CATEGORIES = ['일반', '주요공지', '주보', '교육', '봉사'];
 const EVENT_CATEGORIES  = ['예배', '교육', '친교', '봉사', '특별행사'];
 const VIDEO_CATEGORIES  = ['주일예배', '어린이주일예배', '새벽예배', '카타콤기도회', '교회행사'];
@@ -292,15 +312,15 @@ const seedData = () => {
   return {
     users: [
       { id: adminId, userId: 'admin', email: 'admin@bugok.church', password: 'admin1234', name: '관리자',
-        group: null, role: 'admin', contact: '010-0000-0000', joinedAt: '2024-01-01T00:00:00.000Z' },
+        groups: [], group: null, role: 'admin', contact: '010-0000-0000', joinedAt: '2024-01-01T00:00:00.000Z' },
       { id: u1, userId: 'kim', email: 'kim@example.com', password: '1234', name: '김은혜',
-        group: 'women', role: 'member', contact: '010-1111-2222', joinedAt: '2024-03-10T00:00:00.000Z' },
+        groups: ['women'], group: 'women', role: 'member', contact: '010-1111-2222', joinedAt: '2024-03-10T00:00:00.000Z' },
       { id: u2, userId: 'lee', email: 'lee@example.com', password: '1234', name: '이믿음',
-        group: 'men', role: 'member', contact: '010-2222-3333', joinedAt: '2024-05-21T00:00:00.000Z' },
+        groups: ['men'], group: 'men', role: 'member', contact: '010-2222-3333', joinedAt: '2024-05-21T00:00:00.000Z' },
       { id: u3, userId: 'park', email: 'park@example.com', password: '1234', name: '박소망',
-        group: 'youth', role: 'member', contact: '010-3333-4444', joinedAt: '2025-02-02T00:00:00.000Z' },
+        groups: ['youth'], group: 'youth', role: 'member', contact: '010-3333-4444', joinedAt: '2025-02-02T00:00:00.000Z' },
       { id: u4, userId: 'choi', email: 'choi@example.com', password: '1234', name: '최사랑',
-        group: 'teen', role: 'member', contact: '010-4444-5555', joinedAt: '2025-09-09T00:00:00.000Z' },
+        groups: ['teen', 'youth'], group: 'teen', role: 'member', contact: '010-4444-5555', joinedAt: '2025-09-09T00:00:00.000Z' },
     ],
     notices: [
       { id: uid(), title: '2026년 신년 감사예배 안내', category: '주요공지', isPinned: true,
@@ -418,6 +438,17 @@ function ChurchApp() {
         await ss.set('app:settings', seed.settings);
         u = seed.users;
       }
+      // 기존 사용자 데이터에 groups 배열이 없으면 group(단일)로부터 자동 생성 (1회 마이그레이션)
+      let needsUserMigration = false;
+      const migrated = u.map(x => {
+        if (Array.isArray(x.groups)) return x;
+        needsUserMigration = true;
+        return { ...x, groups: x.group ? [x.group] : [] };
+      });
+      if (needsUserMigration) {
+        await ss.set('app:users', migrated);
+        u = migrated;
+      }
       setUsers(u);
       setNotices ((await ss.get('app:notices'))  || []);
       setVideos  ((await ss.get('app:videos'))   || []);
@@ -467,13 +498,17 @@ function ChurchApp() {
       return { ok: false, error: '이미 사용 중인 아이디입니다.' };
     if (form.email && users.some(x => (x.email || '').toLowerCase() === form.email.toLowerCase()))
       return { ok: false, error: '이미 가입된 이메일입니다.' };
+    const groups = (form.groups && form.groups.length) ? form.groups.slice(0, MAX_GROUPS) : (form.group ? [form.group] : []);
     const newUser = {
       id: 'u_' + uid(),
       userId: form.userId || '',
       email: form.email || '',
       password: form.password,
       name: form.name,
-      group: form.group, role: 'member', contact: form.contact || '',
+      groups,                       // 다중 목장 배열
+      group: groups[0] || null,     // 호환용 대표 목장
+      role: 'member',
+      contact: form.contact || '',
       joinedAt: new Date().toISOString(),
     };
     const next = [...users, newUser];
@@ -502,7 +537,7 @@ function ChurchApp() {
     settings: async (next) => { setSettings(next); await ss.set('app:settings', next); },
   };
 
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = isRoleAdmin(currentUser?.role);  // admin / pastor / pastor_staff 모두 관리 권한 보유
 
   /* =========================================================================
      렌더
@@ -791,7 +826,7 @@ function Header({ ctx, navOpen, setNavOpen }) {
                 : (settings.logoSymbol || '✚')}
             </div>
             <div className="text-left leading-tight">
-              <div className="text-[10px] sm:text-[11px] text-amber-200/80 tracking-wide">기독교한국침례회</div>
+              <div className="text-[10px] sm:text-[11px] text-amber-200/80 tracking-wide">기독교한국침례교</div>
               <div className="text-base sm:text-lg font-bold tracking-tight" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>
                 {settings.churchName}
               </div>
@@ -903,7 +938,7 @@ function Footer({ ctx }) {
                   : (settings.logoSymbol || '✚')}
               </div>
               <div className="leading-tight">
-                <div className="text-[11px] text-slate-400">기독교한국침례회</div>
+                <div className="text-[11px] text-slate-400">기독교한국침례교</div>
                 <div className="text-lg font-bold text-white" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>
                   {settings.churchName}
                 </div>
@@ -915,10 +950,10 @@ function Footer({ ctx }) {
             <div className="text-amber-300 font-semibold mb-3">예배 안내</div>
             <ul className="space-y-1.5 text-slate-400">
               <li>주일 예배 — 오전 11:00</li>
-              <li>어린이 주일예배 — 오후 2:00</li>
-              <li>청소년 예배 — 토요일 오후 5:00</li>
-              <li>새날 기도회 — 매월 1일 오전 6:00</li>
-              <li>카타콤기도회 — 매월 둘째주 금요일 저녁 9:00</li>
+              <li>어린이 주일예배 — 오후 02:00</li>
+              <li>청소년 예배 — 토요일 오후 05:00</li>
+              <li>새날 기도회 — 매월 1일 오전 06:00</li>
+              <li>카타콤기도회 — 매월 마지막주 금요일 저녁 09:00</li>
             </ul>
           </div>
           <div className="text-sm">
@@ -1012,6 +1047,46 @@ const inputCls  = "w-full px-3 py-2.5 rounded-md border border-stone-300 bg-whit
 const btnPri    = "px-4 py-2.5 rounded-md bg-[#0f1d3d] text-white text-sm font-semibold hover:bg-[#1a2c5a] disabled:opacity-50 transition-colors";
 const btnAccent = "px-4 py-2.5 rounded-md bg-amber-500 text-[#0f1d3d] text-sm font-semibold hover:bg-amber-400 transition-colors";
 const btnGhost  = "px-4 py-2.5 rounded-md border border-stone-300 text-slate-700 text-sm font-medium hover:bg-stone-50 transition-colors";
+
+/* ----------- 목장 다중선택 칩 (최대 MAX_GROUPS=3 개) ----------- */
+function GroupChips({ value = [], onChange, allowEmpty = false, max = MAX_GROUPS }) {
+  const toggle = (gid) => {
+    const cur = value.includes(gid)
+      ? value.filter(x => x !== gid)
+      : (value.length >= max ? value : [...value, gid]);
+    if (!allowEmpty && cur.length === 0) return; // 최소 1개 유지
+    onChange(cur);
+  };
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2">
+        {GROUPS.map(g => {
+          const on = value.includes(g.id);
+          const full = !on && value.length >= max;
+          return (
+            <button
+              key={g.id} type="button"
+              onClick={() => toggle(g.id)}
+              disabled={full}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors
+                ${on
+                  ? 'bg-[#0f1d3d] text-white border-[#0f1d3d]'
+                  : full
+                    ? 'bg-stone-50 text-slate-300 border-stone-200 cursor-not-allowed'
+                    : 'bg-white text-slate-700 border-stone-300 hover:bg-stone-50'}`}
+            >
+              {on && <span className="mr-1">✓</span>}
+              {g.name}
+            </button>
+          );
+        })}
+      </div>
+      <div className="text-[11px] text-slate-500 mt-1.5">
+        선택 {value.length}/{max} {value.length === 0 && !allowEmpty && <span className="text-rose-500">· 최소 1개 선택</span>}
+      </div>
+    </div>
+  );
+}
 
 /* ============================== 홈 (랜딩) ============================== */
 function HomePage({ ctx }) {
@@ -1262,10 +1337,12 @@ function HomePage({ ctx }) {
               <>
                 <div className="text-amber-300 text-xs tracking-widest mb-3">SHALOM</div>
                 <div className="text-2xl font-bold mb-2" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>
-                  {currentUser.name} 성도님,<br/>오늘도 평안하세요
+                  {currentUser.name} {roleInfo(currentUser.role).name}님,<br/>오늘도 평안하세요
                 </div>
                 <div className="text-sm text-slate-300 mb-6">
-                  {currentUser.group ? `${groupName(currentUser.group)} 소속` : '관리자'}
+                  {userGroups(currentUser).length
+                    ? userGroups(currentUser).map(g => groupName(g)).join(' · ') + ' 소속'
+                    : (isRoleAdmin(currentUser.role) ? roleInfo(currentUser.role).name : '목장 미지정')}
                 </div>
                 <div className="mt-auto flex gap-2">
                   <button onClick={() => go('qts')} className="flex-1 px-3 py-2.5 rounded-md bg-white/10 hover:bg-white/20 text-sm font-semibold">QT 나눔</button>
@@ -1362,7 +1439,7 @@ function LoginPage({ ctx }) {
 /* ============================== 회원가입 ============================== */
 function SignupPage({ ctx }) {
   const { signup, setRoute, settings } = ctx;
-  const [form, setForm] = useState({ userId: '', email: '', password: '', name: '', group: 'women', contact: '' });
+  const [form, setForm] = useState({ userId: '', email: '', password: '', name: '', groups: ['women'], contact: '' });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -1372,6 +1449,7 @@ function SignupPage({ ctx }) {
       setErr('아이디는 영문/숫자/_ 조합 3~20자로 입력해주세요.'); return;
     }
     if (form.password.length < 4) { setErr('비밀번호는 4자 이상이어야 합니다.'); return; }
+    if (!form.groups || form.groups.length === 0) { setErr('목장을 1개 이상 선택해주세요.'); return; }
     setErr(''); setBusy(true);
     const r = await signup(form);
     setBusy(false);
@@ -1397,10 +1475,8 @@ function SignupPage({ ctx }) {
           <Field label="이름"><input required value={form.name} onChange={e => upd('name', e.target.value)} className={inputCls} placeholder="홍길동"/></Field>
           <Field label="비밀번호" hint="4자 이상 입력해주세요"><input type="password" required value={form.password} onChange={e => upd('password', e.target.value)} className={inputCls} placeholder="••••••••" autoComplete="new-password"/></Field>
           <Field label="이메일 (선택)"><input type="email" value={form.email} onChange={e => upd('email', e.target.value)} className={inputCls} placeholder="email@example.com"/></Field>
-          <Field label="목장 선택">
-            <select value={form.group} onChange={e => upd('group', e.target.value)} className={inputCls}>
-              {GROUPS.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </select>
+          <Field label="목장 선택" hint={`최대 ${MAX_GROUPS}개까지 선택 가능합니다`}>
+            <GroupChips value={form.groups} onChange={(v) => upd('groups', v)} />
           </Field>
           <Field label="전화번호 (선택)"><input value={form.contact} onChange={e => upd('contact', e.target.value)} className={inputCls} placeholder="010-0000-0000"/></Field>
           {err && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-200 px-3 py-2 rounded-md mb-3">{err}</div>}
@@ -1812,13 +1888,14 @@ function QTPage({ ctx }) {
     );
   }
 
-  // RLS 시뮬레이션: 본인 목장 글만 조회 (관리자는 전체 조회 가능)
+  // RLS 시뮬레이션: 본인이 속한 목장 중 어느 하나에 등록된 글은 모두 열람 (관리자는 전체 조회 가능)
+  const myGroups = userGroups(currentUser);
   const visible = useMemo(() => {
     let arr = [...qts];
     if (isAdmin && groupFilter !== 'mine') {
       // pass through
     } else {
-      arr = arr.filter(q => q.group === currentUser.group);
+      arr = arr.filter(q => myGroups.includes(q.group));
     }
     if (isAdmin && groupFilter !== 'mine' && groupFilter !== 'all') {
       arr = arr.filter(q => q.group === groupFilter);
@@ -1834,12 +1911,14 @@ function QTPage({ ctx }) {
     showToast('삭제되었습니다.');
   };
 
-  const myGroupName = currentUser.group ? groupName(currentUser.group) : '미지정';
+  const myGroupsLabel = myGroups.length
+    ? myGroups.map(g => groupName(g)).join(' · ')
+    : '미지정';
 
   return (
     <>
       <PageHeader icon={BookOpen} title="QT 나눔"
-        subtitle={isAdmin ? '관리자는 전체 목장 QT를 열람할 수 있습니다.' : `${myGroupName} 성도들과 말씀 묵상을 나눠보세요`}
+        subtitle={isAdmin ? '관리자는 전체 목장 QT를 열람할 수 있습니다.' : `${myGroupsLabel} 성도들과 말씀 묵상을 나눠보세요`}
         action={
           <button onClick={() => setCreating(true)} className={btnAccent + ' flex items-center gap-1.5'}>
             <Plus size={16}/> QT 작성
@@ -1858,7 +1937,7 @@ function QTPage({ ctx }) {
           </div>
         )}
 
-        {!currentUser.group && !isAdmin && (
+        {myGroups.length === 0 && !isAdmin && (
           <div className="bg-amber-50 border border-amber-200 rounded-md p-4 text-sm text-amber-800 mb-5">
             아직 목장이 지정되지 않았습니다. 마이페이지에서 목장을 선택해 주세요.
           </div>
@@ -1903,8 +1982,12 @@ function QTPage({ ctx }) {
 
 function QTFormModal({ open, editing, onClose, ctx }) {
   const { qts, persist, currentUser, isAdmin, showToast } = ctx;
-  // 일반 사용자는 자기 목장 고정. 관리자는 직접 선택 가능 (기본값: 본인 목장 또는 첫 번째 목장)
-  const defaultGroup = currentUser?.group || (isAdmin ? GROUPS[0].id : '');
+  const myGroups = userGroups(currentUser);
+  // 등록할 수 있는 후보 목장:
+  //   - 관리자: 전체 목장
+  //   - 일반 사용자: 본인이 가입한 목장 중에서만 선택
+  const selectable = isAdmin ? GROUPS.map(g => g.id) : myGroups;
+  const defaultGroup = selectable[0] || '';
   const [form, setForm] = useState({ title: '', scripture: '', content: '', group: defaultGroup });
 
   useEffect(() => {
@@ -1922,10 +2005,15 @@ function QTFormModal({ open, editing, onClose, ctx }) {
 
   const submit = async (e) => {
     e.preventDefault();
-    // 등록·수정 모두에서 목장 결정: 관리자가 선택했으면 그 값, 아니면 작성자(또는 기존) 목장
-    const targetGroup = isAdmin ? form.group : (editing ? editing.group : currentUser?.group);
+    // 등록·수정 모두에서 목장 결정
+    const targetGroup = form.group || (editing ? editing.group : '');
     if (!targetGroup) {
-      showToast('목장 정보가 필요합니다. 마이페이지에서 설정해주세요.', 'error');
+      showToast('목장 정보가 필요합니다. 마이페이지에서 목장을 선택해주세요.', 'error');
+      return;
+    }
+    // 일반 사용자는 본인 가입 목장에만 등록 가능
+    if (!isAdmin && !myGroups.includes(targetGroup)) {
+      showToast('가입된 목장에만 등록할 수 있습니다.', 'error');
       return;
     }
     if (editing) {
@@ -1944,13 +2032,18 @@ function QTFormModal({ open, editing, onClose, ctx }) {
     onClose();
   };
 
+  // 선택 가능한 목장의 옵션 리스트 (이름 매핑)
+  const options = selectable.map(id => ({ id, name: groupName(id) }));
+  // 셀렉트 노출 조건: 관리자거나, 일반 사용자도 가입 목장이 2개 이상일 때
+  const showGroupSelect = isAdmin || options.length > 1;
+
   return (
     <Modal open={open} onClose={onClose} title={editing ? 'QT 수정' : 'QT 작성'}>
       <form onSubmit={submit}>
-        {isAdmin && (
-          <Field label="목장 선택" hint="관리자는 모든 목장에 등록할 수 있습니다">
+        {showGroupSelect && (
+          <Field label="등록할 목장" hint={isAdmin ? '관리자는 모든 목장에 등록할 수 있습니다' : '가입한 목장 중 선택하세요'}>
             <select required value={form.group} onChange={e => setForm({...form, group: e.target.value})} className={inputCls}>
-              {GROUPS.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+              {options.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
           </Field>
         )}
@@ -1986,7 +2079,7 @@ function QTDetailPage({ ctx }) {
     </div>
   );
   // RLS 체크
-  if (!isAdmin && q.group !== currentUser.group) {
+  if (!isAdmin && !userGroups(currentUser).includes(q.group)) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
         <Shield size={36} className="mx-auto mb-3 text-slate-300"/>
@@ -2292,7 +2385,6 @@ function EventsPage({ ctx }) {
   const { events, persist, isAdmin, showToast } = ctx;
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [viewing, setViewing] = useState(null);   // 상세보기 대상 행사
   const today = todayISO();
 
   const upcoming = useMemo(() => events.filter(e => (e.endDate || e.startDate) >= today)
@@ -2319,7 +2411,7 @@ function EventsPage({ ctx }) {
           </h2>
           {upcoming.length === 0 ? <Empty icon={Calendar} message="예정된 행사가 없습니다."/> : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {upcoming.map(e => <EventCard key={e.id} e={e} onClick={() => setViewing(e)} onEdit={() => setEditing(e)} onDelete={() => onDelete(e)} canEdit={isAdmin} upcoming/>)}
+              {upcoming.map(e => <EventCard key={e.id} e={e} onEdit={() => setEditing(e)} onDelete={() => onDelete(e)} canEdit={isAdmin} upcoming/>)}
             </div>
           )}
         </section>
@@ -2331,34 +2423,22 @@ function EventsPage({ ctx }) {
           </h2>
           {past.length === 0 ? <Empty icon={Calendar} message="지난 행사 기록이 없습니다."/> : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {past.map(e => <EventCard key={e.id} e={e} onClick={() => setViewing(e)} onEdit={() => setEditing(e)} onDelete={() => onDelete(e)} canEdit={isAdmin}/>)}
+              {past.map(e => <EventCard key={e.id} e={e} onEdit={() => setEditing(e)} onDelete={() => onDelete(e)} canEdit={isAdmin}/>)}
             </div>
           )}
         </section>
       </div>
 
       <EventFormModal open={creating || !!editing} editing={editing} onClose={() => { setCreating(false); setEditing(null); }} ctx={ctx} />
-      <EventDetailModal
-        open={!!viewing}
-        event={viewing}
-        canEdit={isAdmin}
-        onClose={() => setViewing(null)}
-        onEdit={() => { const e = viewing; setViewing(null); setEditing(e); }}
-        onDelete={() => { const e = viewing; setViewing(null); onDelete(e); }}
-        today={today}
-      />
     </>
   );
 }
 
-function EventCard({ e, onClick, onEdit, onDelete, canEdit, upcoming }) {
+function EventCard({ e, onEdit, onDelete, canEdit, upcoming }) {
   const d = new Date(e.startDate);
   const days = e.startDate !== e.endDate ? `${fmtDate(e.startDate)} ~ ${fmtDate(e.endDate)}` : fmtDate(e.startDate);
-  // 편집/삭제 버튼 클릭 시에는 카드 클릭(상세보기)으로 전파되지 않도록 stopPropagation
-  const stop = (h) => (ev) => { ev.stopPropagation(); h && h(); };
   return (
-    <div onClick={onClick}
-         className={`bg-white rounded-xl border ${upcoming ? 'border-stone-200' : 'border-stone-200 opacity-90'} p-5 hover:shadow-md hover:border-amber-300 transition-all flex gap-4 cursor-pointer`}>
+    <div className={`bg-white rounded-xl border ${upcoming ? 'border-stone-200' : 'border-stone-200 opacity-90'} p-5 hover:shadow-md transition-shadow flex gap-4`}>
       <div className={`flex-shrink-0 w-16 text-center rounded-lg py-2 ${upcoming ? 'bg-[#0f1d3d] text-white' : 'bg-stone-200 text-slate-600'}`}>
         <div className={`text-[10px] tracking-widest ${upcoming ? 'text-amber-300' : 'text-slate-500'}`}>{d.toLocaleDateString('ko',{month:'short'})}</div>
         <div className="text-2xl font-bold leading-none mt-1">{d.getDate()}</div>
@@ -2374,70 +2454,12 @@ function EventCard({ e, onClick, onEdit, onDelete, canEdit, upcoming }) {
         {e.description && <p className="text-xs text-slate-600 mt-2 line-clamp-2">{e.description}</p>}
         {canEdit && (
           <div className="mt-3 flex gap-1 justify-end">
-            <button onClick={stop(onEdit)}   className="p-1 rounded hover:bg-stone-100 text-slate-600" title="수정"><Pencil size={13}/></button>
-            <button onClick={stop(onDelete)} className="p-1 rounded hover:bg-rose-100 text-rose-600"  title="삭제"><Trash2 size={13}/></button>
+            <button onClick={onEdit} className="p-1 rounded hover:bg-stone-100 text-slate-600"><Pencil size={13}/></button>
+            <button onClick={onDelete} className="p-1 rounded hover:bg-rose-100 text-rose-600"><Trash2 size={13}/></button>
           </div>
         )}
       </div>
     </div>
-  );
-}
-
-function EventDetailModal({ open, event, canEdit, onClose, onEdit, onDelete, today }) {
-  if (!event) return null;
-  const isUpcoming = (event.endDate || event.startDate) >= today;
-  const isMultiDay = event.startDate !== event.endDate;
-  const d = new Date(event.startDate);
-  const dEnd = new Date(event.endDate);
-  const days = isMultiDay ? `${fmtDate(event.startDate)} ~ ${fmtDate(event.endDate)}` : fmtDate(event.startDate);
-
-  // 일수 계산
-  const dayCount = Math.round((dEnd - d) / 86400000) + 1;
-
-  return (
-    <Modal open={open} onClose={onClose} title="행사 상세">
-      <div className="flex gap-4 mb-4">
-        <div className={`flex-shrink-0 w-20 text-center rounded-xl py-3 ${isUpcoming ? 'bg-[#0f1d3d] text-white' : 'bg-stone-200 text-slate-600'}`}>
-          <div className={`text-[10px] tracking-widest ${isUpcoming ? 'text-amber-300' : 'text-slate-500'}`}>{d.toLocaleDateString('ko',{month:'short'})}</div>
-          <div className="text-3xl font-bold leading-none mt-1">{d.getDate()}</div>
-          {isMultiDay && <div className="text-[10px] mt-1 opacity-80">+{dayCount-1}일</div>}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700">{event.category}</span>
-            {isUpcoming
-              ? <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">예정</span>
-              : <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-stone-200 text-slate-600">종료</span>}
-          </div>
-          <h3 className="text-xl font-bold text-slate-900 mb-2 leading-snug" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>
-            {event.title}
-          </h3>
-          <div className="text-sm text-slate-700 flex items-center gap-1.5 mb-1"><Clock size={14}/> {days}</div>
-          {event.location && <div className="text-sm text-slate-700 flex items-center gap-1.5"><MapPin size={14}/> {event.location}</div>}
-        </div>
-      </div>
-
-      {event.description && (
-        <div className="bg-stone-50 rounded-lg p-4 mb-4">
-          <div className="text-xs font-semibold text-slate-500 mb-2">상세 안내</div>
-          <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">{event.description}</p>
-        </div>
-      )}
-
-      <div className="flex gap-2 justify-end pt-1">
-        {canEdit && (
-          <>
-            <button onClick={onDelete} className="px-3 py-2 rounded-md text-sm border border-rose-200 text-rose-600 hover:bg-rose-50 flex items-center gap-1.5">
-              <Trash2 size={14}/> 삭제
-            </button>
-            <button onClick={onEdit} className={btnGhost + ' flex items-center gap-1.5'}>
-              <Pencil size={14}/> 수정
-            </button>
-          </>
-        )}
-        <button onClick={onClose} className={btnPri}>닫기</button>
-      </div>
-    </Modal>
   );
 }
 
@@ -2493,7 +2515,7 @@ function MyPage({ ctx }) {
   // ⚠️ Hooks 는 조건부 return 보다 항상 먼저 호출되어야 함 (React Hooks 규칙)
   const [form, setForm] = useState({
     name: currentUser?.name || '',
-    group: currentUser?.group || 'women',
+    groups: userGroups(currentUser),                   // 배열
     contact: currentUser?.contact || '',
   });
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
@@ -2509,9 +2531,19 @@ function MyPage({ ctx }) {
 
   const save = async (e) => {
     e.preventDefault();
-    const next = users.map(u => u.id === currentUser.id ? { ...u, ...form } : u);
+    // 관리권한자(관리자/목회자/목사)는 목장 없이도 가능, 일반 성도는 최소 1개 필수
+    if (!isRoleAdmin(currentUser.role) && (!form.groups || form.groups.length === 0)) {
+      showToast('목장을 1개 이상 선택해주세요.', 'error'); return;
+    }
+    const groups = (form.groups || []).slice(0, MAX_GROUPS);
+    const patch = {
+      name: form.name,
+      groups,
+      group: groups[0] || null,    // 호환용 대표 목장 동기화
+      contact: form.contact,
+    };
+    const next = users.map(u => u.id === currentUser.id ? { ...u, ...patch } : u);
     await persist.users(next); showToast('정보가 수정되었습니다.');
-    // currentUser sync는 다음 인터랙션 시점에 반영되도록 두고, 즉시 반영을 위해 새로 찾음
     const me = next.find(u => u.id === currentUser.id);
     ctx.currentUser = me;
   };
@@ -2539,11 +2571,16 @@ function MyPage({ ctx }) {
             <Field label="이메일">
               <input value={currentUser.email || ''} disabled className={inputCls + ' bg-stone-50 text-slate-500'}/>
             </Field>
+            <Field label="권한">
+              <input value={roleInfo(currentUser.role).name} disabled className={inputCls + ' bg-stone-50 text-slate-500'}/>
+            </Field>
             <Field label="이름"><input required value={form.name} onChange={e => setForm({...form, name: e.target.value})} className={inputCls}/></Field>
-            <Field label="목장">
-              <select value={form.group} onChange={e => setForm({...form, group: e.target.value})} className={inputCls}>
-                {GROUPS.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-              </select>
+            <Field label="목장 (최대 3개)" hint={isRoleAdmin(currentUser.role) ? '관리권한자는 목장 없이도 가능합니다' : '최소 1개 이상 선택'}>
+              <GroupChips
+                value={form.groups}
+                onChange={(v) => setForm({...form, groups: v})}
+                allowEmpty={isRoleAdmin(currentUser.role)}
+              />
             </Field>
             <Field label="전화번호"><input value={form.contact} onChange={e => setForm({...form, contact: e.target.value})} className={inputCls} placeholder="010-0000-0000"/></Field>
             <button className={btnPri}>저장</button>
@@ -2618,7 +2655,10 @@ function AdminOverview({ ctx }) {
     { label: '기도제목', value: prayers.length, icon: HandHeart, route: 'prayers' },
     { label: '교회 행사', value: events.length, icon: Calendar, route: 'events' },
   ];
-  const groupCounts = GROUPS.map(g => ({ ...g, count: users.filter(u => u.group === g.id).length }));
+  // 목장별 인원: 사용자의 groups 배열에 해당 목장이 포함되어 있으면 카운트 (한 사용자가 여러 목장에 중복 카운트됨)
+  const groupCounts = GROUPS.map(g => ({ ...g, count: users.filter(u => userGroups(u).includes(g.id)).length }));
+  // 권한별 인원
+  const roleCounts = ROLES.map(r => ({ ...r, count: users.filter(u => (u.role || 'member') === r.id).length }));
 
   return (
     <>
@@ -2658,7 +2698,15 @@ function AdminOverview({ ctx }) {
         </div>
 
         <div className="bg-white rounded-2xl border border-stone-200 p-6">
-          <h3 className="text-sm font-bold text-slate-900 mb-4">빠른 등록</h3>
+          <h3 className="text-sm font-bold text-slate-900 mb-4">권한별 인원 / 빠른 등록</h3>
+          <div className="grid grid-cols-2 gap-2 mb-4 pb-4 border-b border-stone-100">
+            {roleCounts.map(r => (
+              <div key={r.id} className="flex items-center justify-between text-xs rounded-md border border-stone-200 px-3 py-2">
+                <span className={'px-2 py-0.5 rounded ' + (r.id === 'member' ? 'text-slate-600' : r.badgeCls)}>{r.name}</span>
+                <span className="font-bold text-slate-900">{r.count}명</span>
+              </div>
+            ))}
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <QuickBtn label="공지 등록"   icon={Bell}      onClick={() => setRoute({ name: 'notices', params: {} })}/>
             <QuickBtn label="영상 등록"   icon={Video}     onClick={() => setRoute({ name: 'videos',  params: {} })}/>
@@ -2690,7 +2738,13 @@ function AdminMembers({ ctx }) {
 
   const list = useMemo(() => {
     let arr = [...users];
-    if (groupFilter !== 'all') arr = groupFilter === 'none' ? arr.filter(u => !u.group) : arr.filter(u => u.group === groupFilter);
+    if (groupFilter !== 'all') {
+      if (groupFilter === 'none') {
+        arr = arr.filter(u => userGroups(u).length === 0);
+      } else {
+        arr = arr.filter(u => userGroups(u).includes(groupFilter));
+      }
+    }
     if (search.trim()) {
       const s = search.toLowerCase();
       arr = arr.filter(u =>
@@ -2700,7 +2754,8 @@ function AdminMembers({ ctx }) {
         (u.contact || '').toLowerCase().includes(s)
       );
     }
-    arr.sort((a,b) => (a.role==='admin'?-1:1) - (b.role==='admin'?-1:1) || a.name.localeCompare(b.name));
+    // 관리권한자 우선, 이후 이름 가나다순
+    arr.sort((a,b) => (isRoleAdmin(a.role)?-1:1) - (isRoleAdmin(b.role)?-1:1) || a.name.localeCompare(b.name));
     return arr;
   }, [users, search, groupFilter]);
 
@@ -2727,6 +2782,8 @@ function AdminMembers({ ctx }) {
       const dupEmail = users.some(x => (x.email || '').toLowerCase() === form.email.toLowerCase() && (isNew || x.id !== form.id));
       if (dupEmail) { showToast('이미 사용 중인 이메일입니다.', 'error'); return false; }
     }
+    // 목장 개수 제한
+    const formGroups = (form.groups || []).slice(0, MAX_GROUPS);
 
     if (isNew) {
       const newUser = {
@@ -2735,7 +2792,8 @@ function AdminMembers({ ctx }) {
         email: form.email || '',
         password: form.password,
         name: form.name,
-        group: form.group || null,
+        groups: formGroups,
+        group: formGroups[0] || null,   // 호환용
         role: form.role || 'member',
         contact: form.contact || '',
         joinedAt: new Date().toISOString(),
@@ -2743,9 +2801,9 @@ function AdminMembers({ ctx }) {
       await persist.users([...users, newUser]);
       showToast(`${newUser.name}님이 등록되었습니다.`);
     } else {
-      // 자기 자신의 관리자 권한은 해제 불가
-      if (form.id === currentUser.id && form.role !== 'admin') {
-        showToast('자기 자신의 관리자 권한은 해제할 수 없습니다.', 'error'); return false;
+      // 자기 자신의 관리권한은 해제 불가 (관리/목회자/목사 → 성도 로 강등 차단)
+      if (form.id === currentUser.id && !isRoleAdmin(form.role)) {
+        showToast('자기 자신의 관리 권한은 해제할 수 없습니다.', 'error'); return false;
       }
       const next = users.map(x => {
         if (x.id !== form.id) return x;
@@ -2753,7 +2811,8 @@ function AdminMembers({ ctx }) {
           userId: form.userId,
           email: form.email || '',
           name: form.name,
-          group: form.group || null,
+          groups: formGroups,
+          group: formGroups[0] || null,
           role: form.role,
           contact: form.contact || '',
         };
@@ -2800,26 +2859,30 @@ function AdminMembers({ ctx }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
-              {list.map(u => (
-                <tr key={u.id} className="hover:bg-stone-50">
-                  <td className="px-3 py-3 font-semibold text-slate-900">{u.name}</td>
-                  <td className="px-3 py-3 text-slate-700 font-mono text-xs">{u.userId || <span className="text-slate-400">—</span>}</td>
-                  <td className="px-3 py-3 text-slate-600 text-xs">{u.email || <span className="text-slate-400">—</span>}</td>
-                  <td className="px-3 py-3 text-slate-600 text-xs">{u.contact || <span className="text-slate-400">—</span>}</td>
-                  <td className="px-3 py-3 text-xs">
-                    {u.group
-                      ? <span className="px-2 py-0.5 rounded-full bg-stone-100 text-slate-700">{groupName(u.group)}</span>
-                      : <span className="text-slate-400">미지정</span>}
-                  </td>
-                  <td className="px-3 py-3 text-xs">
-                    {u.role === 'admin'
-                      ? <span className="px-2 py-0.5 rounded bg-amber-50 border border-amber-300 text-amber-800 font-semibold">관리자</span>
-                      : <span className="text-slate-600">성도</span>}
-                  </td>
-                  <td className="px-3 py-3 text-right whitespace-nowrap">
-                    <button onClick={() => setEditing(u)}
-                            className="p-1.5 rounded hover:bg-stone-100 text-slate-700 mr-1" title="수정">
-                      <Pencil size={14}/>
+              {list.map(u => {
+                const ugs = userGroups(u);
+                const r = roleInfo(u.role);
+                return (
+                  <tr key={u.id} className="hover:bg-stone-50">
+                    <td className="px-3 py-3 font-semibold text-slate-900">{u.name}</td>
+                    <td className="px-3 py-3 text-slate-700 font-mono text-xs">{u.userId || <span className="text-slate-400">—</span>}</td>
+                    <td className="px-3 py-3 text-slate-600 text-xs">{u.email || <span className="text-slate-400">—</span>}</td>
+                    <td className="px-3 py-3 text-slate-600 text-xs">{u.contact || <span className="text-slate-400">—</span>}</td>
+                    <td className="px-3 py-3 text-xs">
+                      {ugs.length === 0
+                        ? <span className="text-slate-400">미지정</span>
+                        : <div className="flex flex-wrap gap-1">
+                            {ugs.map(gid => <span key={gid} className="px-2 py-0.5 rounded-full bg-stone-100 text-slate-700">{groupName(gid)}</span>)}
+                          </div>
+                      }
+                    </td>
+                    <td className="px-3 py-3 text-xs">
+                      <span className={'px-2 py-0.5 rounded ' + (r.id === 'member' ? 'text-slate-600' : r.badgeCls)}>{r.name}</span>
+                    </td>
+                    <td className="px-3 py-3 text-right whitespace-nowrap">
+                      <button onClick={() => setEditing(u)}
+                              className="p-1.5 rounded hover:bg-stone-100 text-slate-700 mr-1" title="수정">
+                        <Pencil size={14}/>
                     </button>
                     <button onClick={() => removeUser(u)}
                             className="p-1.5 rounded hover:bg-rose-50 text-rose-600" title="삭제">
@@ -2827,7 +2890,8 @@ function AdminMembers({ ctx }) {
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -2837,7 +2901,7 @@ function AdminMembers({ ctx }) {
       {creating && (
         <MemberFormModal
           mode="create"
-          initial={{ userId: '', email: '', password: '', name: '', group: 'women', role: 'member', contact: '' }}
+          initial={{ userId: '', email: '', password: '', name: '', groups: ['women'], role: 'member', contact: '' }}
           onClose={() => setCreating(false)}
           onSave={async (form) => { const ok = await saveMember(form, true); if (ok) setCreating(false); }}
         />
@@ -2845,7 +2909,7 @@ function AdminMembers({ ctx }) {
       {editing && (
         <MemberFormModal
           mode="edit"
-          initial={{ ...editing, password: '' }}
+          initial={{ ...editing, password: '', groups: userGroups(editing) }}
           onClose={() => setEditing(null)}
           onSave={async (form) => { const ok = await saveMember(form, false); if (ok) setEditing(null); }}
         />
@@ -2882,20 +2946,14 @@ function MemberFormModal({ mode, initial, onClose, onSave }) {
         <Field label="전화번호 (선택)">
           <input value={form.contact || ''} onChange={e => upd('contact', e.target.value)} className={inputCls} placeholder="010-0000-0000"/>
         </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="목장">
-            <select value={form.group || ''} onChange={e => upd('group', e.target.value || null)} className={inputCls}>
-              <option value="">미지정</option>
-              {GROUPS.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </select>
-          </Field>
-          <Field label="권한">
-            <select value={form.role} onChange={e => upd('role', e.target.value)} className={inputCls}>
-              <option value="member">성도</option>
-              <option value="admin">관리자</option>
-            </select>
-          </Field>
-        </div>
+        <Field label={`목장 (최대 ${MAX_GROUPS}개)`} hint="관리권한자는 목장 없이도 가능">
+          <GroupChips value={form.groups || []} onChange={(v) => upd('groups', v)} allowEmpty />
+        </Field>
+        <Field label="권한">
+          <select value={form.role} onChange={e => upd('role', e.target.value)} className={inputCls}>
+            {ROLES.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
+        </Field>
         <div className="flex gap-2 justify-end mt-2">
           <button type="button" onClick={onClose} className={btnGhost}>취소</button>
           <button type="submit" className={btnPri}>{isNew ? '등록' : '저장'}</button>
@@ -3056,7 +3114,7 @@ function AdminSettings({ ctx }) {
               : <span className="text-[#0f1d3d] text-2xl font-bold">{form.logoSymbol || '✚'}</span>}
           </div>
           <div>
-            <div className="text-[11px] text-slate-500 leading-tight">기독교한국침례회</div>
+            <div className="text-[11px] text-slate-500 leading-tight">기독교한국침례교</div>
             <div className="text-base font-bold text-[#0f1d3d]" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>{form.churchName}</div>
             <div className="text-xs text-slate-500">{form.tagline}</div>
           </div>
