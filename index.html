@@ -218,7 +218,7 @@ const GROUPS = [
 ];
 const groupName = (id) => GROUPS.find(g => g.id === id)?.name || '미지정';
 
-// 권한 정의 - 모든 'pastor'/'pastor_staff'/'admin' 은 관리/편집 권한을 가짐
+// 권한 정의 - 각 권한별 능력은 아래 can* 함수로 정의
 const ROLES = [
   { id: 'member',       name: '성도',   adminLike: false, badgeCls: 'text-slate-600' },
   { id: 'admin',        name: '관리자', adminLike: true,  badgeCls: 'bg-amber-50 border border-amber-300 text-amber-800 font-semibold' },
@@ -227,6 +227,28 @@ const ROLES = [
 ];
 const roleInfo = (id) => ROLES.find(r => r.id === id) || ROLES[0];
 const isRoleAdmin = (role) => roleInfo(role).adminLike;
+
+// ============== 권한 매트릭스 ==============
+// 목사(pastor)    : 모든 권한
+// 목회자(pastor_staff) : 콘텐츠 CRUD / QT 전체 열람 가능, 회원·설정·권한부여 불가
+// 관리자(admin)   : 회원·콘텐츠·설정 모두 관리, 단 권한 부여(role 변경)는 목사만
+// 성도(member)    : 본인 글만 수정/삭제 (그 외 권한 없음)
+// ===========================================
+const role = (u) => u?.role || (u ? 'member' : null);
+
+// 콘텐츠(공지/영상/기도/행사/QT) 등록·수정·삭제 — 목사·목회자·관리자
+const canEditContent  = (u) => ['pastor', 'pastor_staff', 'admin'].includes(role(u));
+// 회원 관리 (등록/수정/삭제, 단 권한 부여는 별도) — 목사·관리자
+const canManageUsers  = (u) => ['pastor', 'admin'].includes(role(u));
+// 권한 부여 (다른 사용자의 role 변경) — 목사만
+const canAssignRoles  = (u) => role(u) === 'pastor';
+// 교회 설정 변경 (로고/배경/배경음악/교회명 등) — 목사·관리자
+const canChangeSettings = (u) => ['pastor', 'admin'].includes(role(u));
+// QT 전체 목장 열람 — 목사·목회자·관리자
+const canViewAllQTs   = (u) => ['pastor', 'pastor_staff', 'admin'].includes(role(u));
+// 관리자 페이지 진입 (관리자 페이지 자체는 회원/콘텐츠/설정 중 하나라도 가능하면 노출)
+const canAccessAdmin  = (u) => canEditContent(u) || canManageUsers(u) || canChangeSettings(u);
+
 const MAX_GROUPS = 3;
 // 사용자의 가입 목장 목록을 항상 배열로 반환 (구버전 user.group 호환)
 const userGroups = (u) => {
@@ -537,7 +559,16 @@ function ChurchApp() {
     settings: async (next) => { setSettings(next); await ss.set('app:settings', next); },
   };
 
-  const isAdmin = isRoleAdmin(currentUser?.role);  // admin / pastor / pastor_staff 모두 관리 권한 보유
+  // 콘텐츠 편집 권한자 (관리자/목회자/목사) — 기존 isAdmin 의 의미를 콘텐츠 권한으로 재정의
+  const isAdmin = canEditContent(currentUser);
+  // 회원 관리 권한자 (관리자/목사)
+  const canMembers   = canManageUsers(currentUser);
+  // 권한 부여 권한자 (목사만)
+  const canRoleAssign = canAssignRoles(currentUser);
+  // 설정 변경 권한자 (관리자/목사)
+  const canSettings  = canChangeSettings(currentUser);
+  // 관리자 페이지 진입 권한자 (위 권한 중 하나라도 보유)
+  const canAdmin     = canAccessAdmin(currentUser);
 
   /* =========================================================================
      렌더
@@ -552,6 +583,7 @@ function ChurchApp() {
 
   const ctx = {
     route, setRoute, currentUser, isAdmin,
+    canMembers, canRoleAssign, canSettings, canAdmin,
     users, notices, videos, qts, prayers, events, settings,
     persist, showToast, login, signup, logout,
   };
@@ -803,7 +835,7 @@ function BGMPlayer({ videoId }) {
 
 /* ============================== 헤더 ============================== */
 function Header({ ctx, navOpen, setNavOpen }) {
-  const { settings, currentUser, isAdmin, setRoute, route, logout } = ctx;
+  const { settings, currentUser, isAdmin, canAdmin, setRoute, route, logout } = ctx;
   const navItems = [
     { id: 'home',    label: '홈',       icon: Home },
     { id: 'notices', label: '공지사항', icon: Bell },
@@ -855,7 +887,7 @@ function Header({ ctx, navOpen, setNavOpen }) {
                 <button onClick={() => go('me')} className="px-3 py-1.5 rounded-md text-sm text-slate-200 hover:bg-white/5 hover:text-white flex items-center gap-1.5">
                   <User size={16} /> {currentUser.name}
                 </button>
-                {isAdmin && (
+                {canAdmin && (
                   <button onClick={() => go('admin')} className="px-3 py-1.5 rounded-md text-sm bg-amber-500 text-[#0f1d3d] hover:bg-amber-400 font-semibold flex items-center gap-1.5">
                     <Shield size={16} /> 관리자
                   </button>
@@ -896,7 +928,7 @@ function Header({ ctx, navOpen, setNavOpen }) {
                   <button onClick={() => go('me')} className="flex items-center gap-3 px-3 py-3 rounded-md text-sm text-slate-200 hover:bg-white/5">
                     <User size={18} className="text-amber-300" /> 마이페이지 ({currentUser.name})
                   </button>
-                  {isAdmin && (
+                  {canAdmin && (
                     <button onClick={() => go('admin')} className="flex items-center gap-3 px-3 py-3 rounded-md text-sm text-amber-300 hover:bg-white/5">
                       <Shield size={18} /> 관리자 페이지
                     </button>
@@ -2603,11 +2635,11 @@ function MyPage({ ctx }) {
 
 /* ============================== 관리자 ============================== */
 function AdminPage({ ctx }) {
-  const { isAdmin, settings, persist, users, currentUser, showToast, setRoute } = ctx;
-  // ⚠️ Hooks 는 조건부 return 보다 항상 먼저 호출되어야 함 (React Hooks 규칙)
+  const { canAdmin, canMembers, canSettings, setRoute } = ctx;
+  // 권한에 따라 첫 탭을 자동 선택 (목회자처럼 회원/설정 권한이 없으면 대시보드만 보임)
   const [tab, setTab] = useState('overview');
 
-  if (!isAdmin) {
+  if (!canAdmin) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
         <Shield size={36} className="mx-auto mb-3 text-slate-300"/>
@@ -2617,29 +2649,33 @@ function AdminPage({ ctx }) {
     );
   }
 
+  // 동적으로 사용 가능한 탭 구성
+  const tabs = [{ id:'overview', label:'대시보드', icon: Home }];
+  if (canMembers)  tabs.push({ id:'members',  label:'회원 관리', icon: Users });
+  if (canSettings) tabs.push({ id:'settings', label:'교회 설정', icon: Settings });
+
+  // 권한이 사라진 탭에 머물러 있으면 overview 로 폴백
+  const activeTab = tabs.find(t => t.id === tab) ? tab : 'overview';
+
   return (
     <>
       <PageHeader icon={Shield} title="관리자 페이지" subtitle="회원, 콘텐츠, 교회 정보를 관리하세요" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex flex-wrap gap-1 mb-6 border-b border-stone-200">
-          {[
-            { id:'overview', label:'대시보드', icon: Home },
-            { id:'members',  label:'회원 관리', icon: Users },
-            { id:'settings', label:'교회 설정', icon: Settings },
-          ].map(t => {
+          {tabs.map(t => {
             const Icon = t.icon;
             return (
               <button key={t.id} onClick={() => setTab(t.id)}
                 className={`px-4 py-2.5 text-sm font-semibold flex items-center gap-1.5 border-b-2 -mb-px transition-colors ${
-                  tab===t.id ? 'border-[#0f1d3d] text-[#0f1d3d]' : 'border-transparent text-slate-500 hover:text-[#0f1d3d]'
+                  activeTab===t.id ? 'border-[#0f1d3d] text-[#0f1d3d]' : 'border-transparent text-slate-500 hover:text-[#0f1d3d]'
                 }`}><Icon size={14}/> {t.label}</button>
             );
           })}
         </div>
 
-        {tab === 'overview'  && <AdminOverview ctx={ctx}/>}
-        {tab === 'members'   && <AdminMembers ctx={ctx}/>}
-        {tab === 'settings'  && <AdminSettings ctx={ctx}/>}
+        {activeTab === 'overview'  && <AdminOverview ctx={ctx}/>}
+        {activeTab === 'members'   && canMembers  && <AdminMembers ctx={ctx}/>}
+        {activeTab === 'settings'  && canSettings && <AdminSettings ctx={ctx}/>}
       </div>
     </>
   );
@@ -2730,7 +2766,7 @@ function QuickBtn({ label, icon: Icon, onClick, disabled }) {
 }
 
 function AdminMembers({ ctx }) {
-  const { users, persist, currentUser, showToast } = ctx;
+  const { users, persist, currentUser, canRoleAssign, showToast } = ctx;
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('all');
   const [editing, setEditing] = useState(null);   // 회원 객체 (수정)
@@ -2784,6 +2820,10 @@ function AdminMembers({ ctx }) {
     }
     // 목장 개수 제한
     const formGroups = (form.groups || []).slice(0, MAX_GROUPS);
+    // 권한 부여는 목사만 가능 — 비-목사 사용자가 role 을 바꾸려 한 경우 강제로 원래값(또는 member) 으로
+    const safeRole = canRoleAssign
+      ? (form.role || 'member')
+      : (isNew ? 'member' : (users.find(x => x.id === form.id)?.role || 'member'));
 
     if (isNew) {
       const newUser = {
@@ -2794,7 +2834,7 @@ function AdminMembers({ ctx }) {
         name: form.name,
         groups: formGroups,
         group: formGroups[0] || null,   // 호환용
-        role: form.role || 'member',
+        role: safeRole,
         contact: form.contact || '',
         joinedAt: new Date().toISOString(),
       };
@@ -2802,7 +2842,7 @@ function AdminMembers({ ctx }) {
       showToast(`${newUser.name}님이 등록되었습니다.`);
     } else {
       // 자기 자신의 관리권한은 해제 불가 (관리/목회자/목사 → 성도 로 강등 차단)
-      if (form.id === currentUser.id && !isRoleAdmin(form.role)) {
+      if (form.id === currentUser.id && !isRoleAdmin(safeRole)) {
         showToast('자기 자신의 관리 권한은 해제할 수 없습니다.', 'error'); return false;
       }
       const next = users.map(x => {
@@ -2813,7 +2853,7 @@ function AdminMembers({ ctx }) {
           name: form.name,
           groups: formGroups,
           group: formGroups[0] || null,
-          role: form.role,
+          role: safeRole,
           contact: form.contact || '',
         };
         // 비밀번호는 입력된 경우에만 변경
@@ -2902,6 +2942,7 @@ function AdminMembers({ ctx }) {
         <MemberFormModal
           mode="create"
           initial={{ userId: '', email: '', password: '', name: '', groups: ['women'], role: 'member', contact: '' }}
+          canRoleAssign={canRoleAssign}
           onClose={() => setCreating(false)}
           onSave={async (form) => { const ok = await saveMember(form, true); if (ok) setCreating(false); }}
         />
@@ -2910,6 +2951,7 @@ function AdminMembers({ ctx }) {
         <MemberFormModal
           mode="edit"
           initial={{ ...editing, password: '', groups: userGroups(editing) }}
+          canRoleAssign={canRoleAssign}
           onClose={() => setEditing(null)}
           onSave={async (form) => { const ok = await saveMember(form, false); if (ok) setEditing(null); }}
         />
@@ -2918,8 +2960,12 @@ function AdminMembers({ ctx }) {
   );
 }
 
-function MemberFormModal({ mode, initial, onClose, onSave }) {
-  const [form, setForm] = useState(initial);
+function MemberFormModal({ mode, initial, onClose, onSave, canRoleAssign }) {
+  // 신규 등록 시 권한 부여 권한이 없으면 무조건 성도로 시작
+  const initialSafe = (mode === 'create' && !canRoleAssign)
+    ? { ...initial, role: 'member' }
+    : initial;
+  const [form, setForm] = useState(initialSafe);
   const isNew = mode === 'create';
   const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -2949,8 +2995,11 @@ function MemberFormModal({ mode, initial, onClose, onSave }) {
         <Field label={`목장 (최대 ${MAX_GROUPS}개)`} hint="관리권한자는 목장 없이도 가능">
           <GroupChips value={form.groups || []} onChange={(v) => upd('groups', v)} allowEmpty />
         </Field>
-        <Field label="권한">
-          <select value={form.role} onChange={e => upd('role', e.target.value)} className={inputCls}>
+        <Field label="권한" hint={canRoleAssign ? '권한 변경은 신중히 진행해주세요' : '권한 변경은 목사만 가능합니다'}>
+          <select value={form.role}
+                  onChange={e => upd('role', e.target.value)}
+                  disabled={!canRoleAssign}
+                  className={inputCls + (!canRoleAssign ? ' bg-stone-50 text-slate-500 cursor-not-allowed' : '')}>
             {ROLES.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
         </Field>
