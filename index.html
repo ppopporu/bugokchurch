@@ -634,7 +634,119 @@ function ChurchApp() {
       <Footer ctx={ctx} />
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
       <BGMPlayer videoId={settings.bgmVideoId || ''} />
+      <PendingApprovalAlert ctx={ctx} />
     </div>
+  );
+}
+
+/* ====== 승인 대기 회원 알림 팝업 ======
+ * - 회원 관리 권한자(canMembers)에게 페이지 접속/재접속(새로고침) 시 자동 표시
+ * - 같은 세션에서 같은 신청건은 다시 띄우지 않도록 sessionStorage 로 한 번 본 ID 셋 기록
+ * - "회원 관리로 이동" 클릭 시 관리자 페이지 회원관리 탭 + pending 필터로 이동
+ */
+function PendingApprovalAlert({ ctx }) {
+  const { users, canMembers, currentUser, setRoute } = ctx;
+  const [open, setOpen] = useState(false);
+  const [pendingList, setPendingList] = useState([]);
+  const checkedRef = useRef(false);
+
+  useEffect(() => {
+    // 권한 없거나 로그인 안 한 경우는 패스 (currentUser 변경 시 다시 시도하도록 ref 리셋)
+    if (!canMembers || !currentUser) {
+      checkedRef.current = false;
+      return;
+    }
+    // 이번 마운트 동안 이미 한 번 체크 했으면 패스
+    if (checkedRef.current) return;
+    // users 가 비어있으면 아직 로딩 중 — users 가 채워질 때 다시 실행
+    if (!users || users.length === 0) return;
+
+    checkedRef.current = true;
+    const pendings = users.filter(u => (u.status || 'approved') === 'pending');
+    if (pendings.length === 0) return;
+
+    // 세션에 이미 본 신청 ID 집합
+    const KEY = 'pendingSeen:' + currentUser.id;
+    let seen;
+    try {
+      seen = new Set(JSON.parse(sessionStorage.getItem(KEY) || '[]'));
+    } catch { seen = new Set(); }
+
+    // 본 적 없는 새 신청건만 안내 (모두 본 적 있으면 팝업 안 띄움)
+    const fresh = pendings.filter(p => !seen.has(p.id));
+    if (fresh.length === 0) return;
+
+    setPendingList(pendings);   // 팝업에는 전체 대기자 표시
+    setOpen(true);
+  }, [users, canMembers, currentUser]);
+
+  const markSeen = () => {
+    if (!currentUser) return;
+    const KEY = 'pendingSeen:' + currentUser.id;
+    try {
+      const ids = pendingList.map(p => p.id);
+      sessionStorage.setItem(KEY, JSON.stringify(ids));
+    } catch {}
+  };
+
+  const close = () => { markSeen(); setOpen(false); };
+  const goManage = () => {
+    markSeen();
+    setOpen(false);
+    setRoute({ name: 'admin', params: { tab: 'members', statusFilter: 'pending' } });
+  };
+
+  if (!open || pendingList.length === 0) return null;
+
+  return (
+    <Modal open={open} onClose={close} title="신규 가입 신청 알림" maxWidth="max-w-lg">
+      <div className="text-center mb-4">
+        <div className="inline-flex w-12 h-12 rounded-full bg-amber-100 items-center justify-center mb-3">
+          <UserPlus size={22} className="text-amber-600"/>
+        </div>
+        <h3 className="text-lg font-bold text-slate-900" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>
+          승인 대기 중인 가입 신청 {pendingList.length}건
+        </h3>
+        <p className="text-xs text-slate-500 mt-1">새로 가입을 신청한 회원이 있습니다. 확인 후 승인해주세요.</p>
+      </div>
+
+      <div className="max-h-64 overflow-y-auto rounded-lg border border-stone-200 mb-4">
+        {pendingList.map((u, i) => {
+          const groups = userGroups(u);
+          return (
+            <div key={u.id} className={'p-3 ' + (i > 0 ? 'border-t border-stone-100' : '')}>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-900">{u.name}</span>
+                  <span className="text-xs text-slate-500 font-mono">@{u.userId}</span>
+                </div>
+                <span className="text-[11px] text-slate-400">{relativeTime(u.joinedAt)}</span>
+              </div>
+              <div className="text-xs text-slate-600 space-y-0.5">
+                {u.email   && <div>이메일: {u.email}</div>}
+                {u.contact && <div>전화: {u.contact}</div>}
+                {groups.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {groups.map(gid => (
+                      <span key={gid} className="px-1.5 py-0.5 rounded bg-stone-100 text-[10px] text-slate-700">
+                        {groupName(gid)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex gap-2 justify-end">
+        <button onClick={close} className={btnGhost}>나중에</button>
+        <button onClick={goManage} className={btnAccent + ' flex items-center gap-1.5'}>
+          <Users size={14}/> 회원 관리로 이동
+        </button>
+      </div>
+    </Modal>
   );
 }
 
@@ -2728,9 +2840,17 @@ function MyPage({ ctx }) {
 
 /* ============================== 관리자 ============================== */
 function AdminPage({ ctx }) {
-  const { canAdmin, canMembers, canSettings, setRoute } = ctx;
-  // 권한에 따라 첫 탭을 자동 선택 (목회자처럼 회원/설정 권한이 없으면 대시보드만 보임)
-  const [tab, setTab] = useState('overview');
+  const { canAdmin, canMembers, canSettings, setRoute, route } = ctx;
+  // 라우트 params.tab 이 지정되어 있으면 해당 탭으로 시작 (외부에서 특정 탭으로 진입할 때)
+  const initialTab = route?.params?.tab || 'overview';
+  const [tab, setTab] = useState(initialTab);
+
+  // 외부에서 route.params.tab 이 바뀌면 즉시 동기화
+  useEffect(() => {
+    if (route?.params?.tab && route.params.tab !== tab) {
+      setTab(route.params.tab);
+    }
+  }, [route?.params?.tab]);
 
   if (!canAdmin) {
     return (
@@ -2877,12 +2997,17 @@ function QuickBtn({ label, icon: Icon, onClick, disabled }) {
 }
 
 function AdminMembers({ ctx }) {
-  const { users, persist, currentUser, canRoleAssign, showToast } = ctx;
+  const { users, persist, currentUser, canRoleAssign, showToast, route } = ctx;
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all'); // all | pending | approved | rejected
+  const [statusFilter, setStatusFilter] = useState(route?.params?.statusFilter || 'all'); // all | pending | approved | rejected
   const [editing, setEditing] = useState(null);   // 회원 객체 (수정)
   const [creating, setCreating] = useState(false); // true면 신규 등록 모달 표시
+
+  // 외부에서 statusFilter 가 라우팅으로 들어올 때 동기화
+  useEffect(() => {
+    if (route?.params?.statusFilter) setStatusFilter(route.params.statusFilter);
+  }, [route?.params?.statusFilter]);
 
   const pendingCount = useMemo(() => users.filter(u => (u.status || 'approved') === 'pending').length, [users]);
 
