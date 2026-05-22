@@ -228,36 +228,51 @@ const GROUPS = [
 ];
 const groupName = (id) => GROUPS.find(g => g.id === id)?.name || '미지정';
 
-// 권한 정의 - 각 권한별 능력은 아래 can* 함수로 정의
+// ============== 권한(ROLE) — 관리자 / 일반사용자 ==============
 const ROLES = [
-  { id: 'member',       name: '성도',   adminLike: false, badgeCls: 'text-slate-600' },
-  { id: 'admin',        name: '관리자', adminLike: true,  badgeCls: 'bg-amber-50 border border-amber-300 text-amber-800 font-semibold' },
-  { id: 'pastor_staff', name: '목회자', adminLike: true,  badgeCls: 'bg-indigo-50 border border-indigo-300 text-indigo-800 font-semibold' },
-  { id: 'pastor',       name: '목사',   adminLike: true,  badgeCls: 'bg-violet-50 border border-violet-300 text-violet-800 font-semibold' },
+  { id: 'member', name: '일반사용자', adminLike: false, badgeCls: 'text-slate-600' },
+  { id: 'admin',  name: '관리자',     adminLike: true,  badgeCls: 'bg-amber-50 border border-amber-300 text-amber-800 font-semibold' },
 ];
 const roleInfo = (id) => ROLES.find(r => r.id === id) || ROLES[0];
-const isRoleAdmin = (role) => roleInfo(role).adminLike;
+const isRoleAdmin = (roleId) => roleInfo(roleId).adminLike;
+
+// ============== 직분(POSITION) — 목사 / 전도사 / 목회자 / 성도 ==============
+const POSITIONS = [
+  { id: 'saint',    name: '성도',   badgeCls: 'text-slate-600' },
+  { id: 'minister', name: '목회자', badgeCls: 'bg-indigo-50 border border-indigo-300 text-indigo-800 font-semibold' },
+  { id: 'evangelist', name: '전도사', badgeCls: 'bg-sky-50 border border-sky-300 text-sky-800 font-semibold' },
+  { id: 'pastor',   name: '목사',   badgeCls: 'bg-violet-50 border border-violet-300 text-violet-800 font-semibold' },
+];
+const positionInfo = (id) => POSITIONS.find(p => p.id === id) || POSITIONS[0];
+const VALID_POSITIONS = POSITIONS.map(p => p.id);
+// 사용자의 직분 id (구버전 데이터 호환)
+const userPosition = (u) => {
+  if (!u) return 'saint';
+  if (u.position && VALID_POSITIONS.includes(u.position)) return u.position;
+  // 구버전 마이그레이션 폴백: 옛 role 이 pastor/pastor_staff 였으면 목사
+  if (u.role === 'pastor' || u.role === 'pastor_staff') return 'pastor';
+  return 'saint';
+};
 
 // ============== 권한 매트릭스 ==============
-// 목사(pastor)    : 모든 권한
-// 목회자(pastor_staff) : 콘텐츠 CRUD / QT 전체 열람 가능, 회원·설정·권한부여 불가
-// 관리자(admin)   : 회원·콘텐츠·설정 모두 관리, 단 권한 부여(role 변경)는 목사만
-// 성도(member)    : 본인 글만 수정/삭제 (그 외 권한 없음)
+// 관리자(admin)     : 콘텐츠 CRUD / 회원관리 / 설정변경 / 직분·권한 수정 등 모든 권한
+// 일반사용자(member) : 본인 글만 수정/삭제
+// (직분 pastor/saint 은 권한과 무관하며, 표시·인사말 등에만 사용)
 // ===========================================
 const role = (u) => u?.role || (u ? 'member' : null);
 
-// 콘텐츠(공지/영상/기도/행사/QT) 등록·수정·삭제 — 목사·목회자·관리자
-const canEditContent  = (u) => ['pastor', 'pastor_staff', 'admin'].includes(role(u));
-// 회원 관리 (등록/수정/삭제, 단 권한 부여는 별도) — 목사·관리자
-const canManageUsers  = (u) => ['pastor', 'admin'].includes(role(u));
-// 권한 부여 (다른 사용자의 role 변경) — 목사만
-const canAssignRoles  = (u) => role(u) === 'pastor';
-// 교회 설정 변경 (로고/배경/배경음악/교회명 등) — 목사·관리자
-const canChangeSettings = (u) => ['pastor', 'admin'].includes(role(u));
-// QT 전체 목장 열람 — 목사·목회자·관리자
-const canViewAllQTs   = (u) => ['pastor', 'pastor_staff', 'admin'].includes(role(u));
-// 관리자 페이지 진입 (관리자 페이지 자체는 회원/콘텐츠/설정 중 하나라도 가능하면 노출)
-const canAccessAdmin  = (u) => canEditContent(u) || canManageUsers(u) || canChangeSettings(u);
+// 콘텐츠(공지/영상/기도/행사/QT) 등록·수정·삭제 — 관리자
+const canEditContent  = (u) => role(u) === 'admin';
+// 회원 관리 (등록/수정/삭제 + 직분/권한 변경) — 관리자
+const canManageUsers  = (u) => role(u) === 'admin';
+// 권한·직분 부여 — 관리자
+const canAssignRoles  = (u) => role(u) === 'admin';
+// 교회 설정 변경 (로고/배경/배경음악/교회명 등) — 관리자
+const canChangeSettings = (u) => role(u) === 'admin';
+// QT 전체 목장 열람 — 관리자
+const canViewAllQTs   = (u) => role(u) === 'admin';
+// 관리자 페이지 진입 — 관리자
+const canAccessAdmin  = (u) => role(u) === 'admin';
 
 const MAX_GROUPS = 3;
 
@@ -373,15 +388,15 @@ const seedData = () => {
   return {
     users: [
       { id: adminId, userId: 'admin', email: 'admin@bugok.church', password: 'admin1234', name: '관리자',
-        groups: [], group: null, role: 'admin', status: 'approved', contact: '010-0000-0000', joinedAt: '2024-01-01T00:00:00.000Z' },
+        groups: [], group: null, role: 'admin', position: 'pastor', status: 'approved', contact: '010-0000-0000', joinedAt: '2024-01-01T00:00:00.000Z' },
       { id: u1, userId: 'kim', email: 'kim@example.com', password: '1234', name: '김은혜',
-        groups: ['women'], group: 'women', role: 'member', status: 'approved', contact: '010-1111-2222', joinedAt: '2024-03-10T00:00:00.000Z' },
+        groups: ['women'], group: 'women', role: 'member', position: 'saint', status: 'approved', contact: '010-1111-2222', joinedAt: '2024-03-10T00:00:00.000Z' },
       { id: u2, userId: 'lee', email: 'lee@example.com', password: '1234', name: '이믿음',
-        groups: ['men'], group: 'men', role: 'member', status: 'approved', contact: '010-2222-3333', joinedAt: '2024-05-21T00:00:00.000Z' },
+        groups: ['men'], group: 'men', role: 'member', position: 'pastor', status: 'approved', contact: '010-2222-3333', joinedAt: '2024-05-21T00:00:00.000Z' },
       { id: u3, userId: 'park', email: 'park@example.com', password: '1234', name: '박소망',
-        groups: ['youth'], group: 'youth', role: 'member', status: 'approved', contact: '010-3333-4444', joinedAt: '2025-02-02T00:00:00.000Z' },
+        groups: ['youth'], group: 'youth', role: 'member', position: 'saint', status: 'approved', contact: '010-3333-4444', joinedAt: '2025-02-02T00:00:00.000Z' },
       { id: u4, userId: 'choi', email: 'choi@example.com', password: '1234', name: '최사랑',
-        groups: ['teen', 'youth'], group: 'teen', role: 'member', status: 'approved', contact: '010-4444-5555', joinedAt: '2025-09-09T00:00:00.000Z' },
+        groups: ['teen', 'youth'], group: 'teen', role: 'member', position: 'saint', status: 'approved', contact: '010-4444-5555', joinedAt: '2025-09-09T00:00:00.000Z' },
     ],
     notices: [
       { id: uid(), title: '2026년 신년 감사예배 안내', category: '주요공지', isPinned: true,
@@ -531,6 +546,8 @@ function ChurchApp() {
         // 기존 사용자 데이터 마이그레이션 (1회):
         //   - groups 배열이 없으면 단일 group 으로부터 생성
         //   - status 가 없으면 'approved' 로 채움 (기존 가입자는 모두 활성)
+        //   - position(직분)이 없으면 옛 role 값에서 유추 (pastor/pastor_staff → 목회자, 그 외 → 성도)
+        //   - 옛 role 값(pastor/pastor_staff)을 새 권한 체계(admin/member)로 정규화
         let users = u || [];
         let needsUserMigration = false;
         const migrated = users.map(x => {
@@ -541,6 +558,18 @@ function ChurchApp() {
           }
           if (!x.status) {
             patched = { ...patched, status: 'approved' };
+            needsUserMigration = true;
+          }
+          if (!x.position) {
+            // 옛 role 이 pastor/pastor_staff 였으면 직분을 목회자로, 아니면 성도로
+            const pos = (x.role === 'pastor' || x.role === 'pastor_staff') ? 'pastor' : 'saint';
+            patched = { ...patched, position: pos };
+            needsUserMigration = true;
+          }
+          // 옛 권한 값 정규화: pastor/pastor_staff 는 더 이상 권한이 아님 → 일반사용자(member)로
+          // (단 admin 은 그대로 유지). 직분은 위에서 이미 분리 보존됨.
+          if (patched.role === 'pastor' || patched.role === 'pastor_staff') {
+            patched = { ...patched, role: 'member' };
             needsUserMigration = true;
           }
           return patched;
@@ -616,7 +645,8 @@ function ChurchApp() {
       name: form.name,
       groups,                       // 다중 목장 배열
       group: groups[0] || null,     // 호환용 대표 목장
-      role: 'member',
+      role: 'member',               // 가입 시 권한은 항상 일반사용자
+      position: (VALID_POSITIONS.includes(form.position) ? form.position : 'saint'),  // 직분: 목사/전도사/목회자/성도
       status: 'pending',            // 승인 대기 상태로 가입
       contact: form.contact || '',
       joinedAt: new Date().toISOString(),
@@ -838,6 +868,9 @@ function PendingApprovalAlert({ ctx }) {
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-slate-900">{u.name}</span>
                   <span className="text-xs text-slate-500 font-mono">@{u.userId}</span>
+                  <span className={'px-1.5 py-0.5 rounded text-[10px] ' + (userPosition(u) === 'saint' ? 'bg-stone-100 text-slate-600' : positionInfo(userPosition(u)).badgeCls)}>
+                    {positionInfo(userPosition(u)).name}
+                  </span>
                 </div>
                 <span className="text-[11px] text-slate-400">{relativeTime(u.joinedAt)}</span>
               </div>
@@ -1859,12 +1892,12 @@ function HomePage({ ctx }) {
               <>
                 <div className="text-amber-300 text-xs tracking-widest mb-3">SHALOM</div>
                 <div className="text-2xl font-bold mb-2" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>
-                  {currentUser.name} {roleInfo(currentUser.role).name}님,<br/>오늘도 평안하세요
+                  {currentUser.name} {positionInfo(userPosition(currentUser)).name}님,<br/>오늘도 평안하세요
                 </div>
                 <div className="text-sm text-slate-300 mb-6">
                   {userGroups(currentUser).length
                     ? userGroups(currentUser).map(g => groupName(g)).join(' · ') + ' 소속'
-                    : (isRoleAdmin(currentUser.role) ? roleInfo(currentUser.role).name : '목장 미지정')}
+                    : (isRoleAdmin(currentUser.role) ? '관리자' : '목장 미지정')}
                 </div>
                 <div className="mt-auto flex gap-2">
                   <button onClick={() => go('qts')} className="flex-1 px-3 py-2.5 rounded-md bg-white/10 hover:bg-white/20 text-sm font-semibold">QT 나눔</button>
@@ -1961,7 +1994,7 @@ function LoginPage({ ctx }) {
 /* ============================== 회원가입 ============================== */
 function SignupPage({ ctx }) {
   const { signup, setRoute, settings } = ctx;
-  const [form, setForm] = useState({ userId: '', email: '', password: '', name: '', groups: ['women'], contact: '' });
+  const [form, setForm] = useState({ userId: '', email: '', password: '', name: '', groups: ['women'], position: 'saint', contact: '' });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -1997,6 +2030,19 @@ function SignupPage({ ctx }) {
           <Field label="이름"><input required value={form.name} onChange={e => upd('name', e.target.value)} className={inputCls} placeholder="홍길동"/></Field>
           <Field label="비밀번호" hint="4자 이상 입력해주세요"><input type="password" required value={form.password} onChange={e => upd('password', e.target.value)} className={inputCls} placeholder="••••••••" autoComplete="new-password"/></Field>
           <Field label="이메일 (선택)"><input type="email" value={form.email} onChange={e => upd('email', e.target.value)} className={inputCls} placeholder="email@example.com"/></Field>
+          <Field label="직분" hint="해당하는 직분을 선택하세요">
+            <div className="grid grid-cols-2 gap-2">
+              {POSITIONS.map(p => (
+                <button key={p.id} type="button" onClick={() => upd('position', p.id)}
+                  className={`px-3 py-2.5 rounded-md text-sm font-medium border transition-colors
+                    ${form.position === p.id
+                      ? 'bg-[#0f1d3d] text-white border-[#0f1d3d]'
+                      : 'bg-white text-slate-700 border-stone-300 hover:bg-stone-50'}`}>
+                  {form.position === p.id && <span className="mr-1">✓</span>}{p.name}
+                </button>
+              ))}
+            </div>
+          </Field>
           <Field label="목장 선택" hint={`최대 ${MAX_GROUPS}개까지 선택 가능합니다`}>
             <GroupChips value={form.groups} onChange={(v) => upd('groups', v)} />
           </Field>
@@ -3164,11 +3210,16 @@ function MyPage({ ctx }) {
             <Field label="이메일">
               <input value={currentUser.email || ''} disabled className={inputCls + ' bg-stone-50 text-slate-500'}/>
             </Field>
-            <Field label="권한">
-              <input value={roleInfo(currentUser.role).name} disabled className={inputCls + ' bg-stone-50 text-slate-500'}/>
-            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="권한">
+                <input value={roleInfo(currentUser.role).name} disabled className={inputCls + ' bg-stone-50 text-slate-500'}/>
+              </Field>
+              <Field label="직분">
+                <input value={positionInfo(userPosition(currentUser)).name} disabled className={inputCls + ' bg-stone-50 text-slate-500'}/>
+              </Field>
+            </div>
             <Field label="이름"><input required value={form.name} onChange={e => setForm({...form, name: e.target.value})} className={inputCls}/></Field>
-            <Field label="목장 (최대 3개)" hint={isRoleAdmin(currentUser.role) ? '관리권한자는 목장 없이도 가능합니다' : '최소 1개 이상 선택'}>
+            <Field label="목장 (최대 3개)" hint={isRoleAdmin(currentUser.role) ? '관리자는 목장 없이도 가능합니다' : '최소 1개 이상 선택'}>
               <GroupChips
                 value={form.groups}
                 onChange={(v) => setForm({...form, groups: v})}
@@ -3265,6 +3316,8 @@ function AdminOverview({ ctx }) {
   const groupCounts = GROUPS.map(g => ({ ...g, count: users.filter(u => userGroups(u).includes(g.id)).length }));
   // 권한별 인원
   const roleCounts = ROLES.map(r => ({ ...r, count: users.filter(u => (u.role || 'member') === r.id).length }));
+  // 직분별 인원
+  const positionCounts = POSITIONS.map(p => ({ ...p, count: users.filter(u => userPosition(u) === p.id).length }));
 
   return (
     <>
@@ -3321,12 +3374,20 @@ function AdminOverview({ ctx }) {
         </div>
 
         <div className="bg-white rounded-2xl border border-stone-200 p-6">
-          <h3 className="text-sm font-bold text-slate-900 mb-4">권한별 인원 / 빠른 등록</h3>
-          <div className="grid grid-cols-2 gap-2 mb-4 pb-4 border-b border-stone-100">
+          <h3 className="text-sm font-bold text-slate-900 mb-4">권한·직분별 인원 / 빠른 등록</h3>
+          <div className="grid grid-cols-2 gap-2 mb-3">
             {roleCounts.map(r => (
               <div key={r.id} className="flex items-center justify-between text-xs rounded-md border border-stone-200 px-3 py-2">
                 <span className={'px-2 py-0.5 rounded ' + (r.id === 'member' ? 'text-slate-600' : r.badgeCls)}>{r.name}</span>
                 <span className="font-bold text-slate-900">{r.count}명</span>
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-2 mb-4 pb-4 border-b border-stone-100">
+            {positionCounts.map(p => (
+              <div key={p.id} className="flex items-center justify-between text-xs rounded-md border border-stone-200 px-3 py-2">
+                <span className={'px-2 py-0.5 rounded ' + (p.id === 'saint' ? 'text-slate-600' : p.badgeCls)}>{p.name}</span>
+                <span className="font-bold text-slate-900">{p.count}명</span>
               </div>
             ))}
           </div>
@@ -3438,10 +3499,14 @@ function AdminMembers({ ctx }) {
     }
     // 목장 개수 제한
     const formGroups = (form.groups || []).slice(0, MAX_GROUPS);
-    // 권한 부여는 목사만 가능 — 비-목사 사용자가 role 을 바꾸려 한 경우 강제로 원래값(또는 member) 으로
+    // 권한 변경은 관리자만 가능 — 권한 없는 경우 강제로 원래값(또는 member) 으로
     const safeRole = canRoleAssign
       ? (form.role || 'member')
       : (isNew ? 'member' : (users.find(x => x.id === form.id)?.role || 'member'));
+    // 직분 (목사/전도사/목회자/성도) — 관리자만 변경 가능
+    const safePosition = canRoleAssign
+      ? (VALID_POSITIONS.includes(form.position) ? form.position : 'saint')
+      : (isNew ? 'saint' : (users.find(x => x.id === form.id)?.position || 'saint'));
 
     if (isNew) {
       const newUser = {
@@ -3453,6 +3518,7 @@ function AdminMembers({ ctx }) {
         groups: formGroups,
         group: formGroups[0] || null,   // 호환용
         role: safeRole,
+        position: safePosition,
         status: 'approved',             // 관리자 등록은 즉시 활성
         contact: form.contact || '',
         joinedAt: new Date().toISOString(),
@@ -3460,9 +3526,9 @@ function AdminMembers({ ctx }) {
       await persist.users([...users, newUser]);
       showToast(`${newUser.name}님이 등록되었습니다.`);
     } else {
-      // 자기 자신의 관리권한은 해제 불가 (관리/목회자/목사 → 성도 로 강등 차단)
+      // 자기 자신의 관리자 권한은 해제 불가 (admin → member 강등 차단)
       if (form.id === currentUser.id && !isRoleAdmin(safeRole)) {
-        showToast('자기 자신의 관리 권한은 해제할 수 없습니다.', 'error'); return false;
+        showToast('자기 자신의 관리자 권한은 해제할 수 없습니다.', 'error'); return false;
       }
       const next = users.map(x => {
         if (x.id !== form.id) return x;
@@ -3473,6 +3539,7 @@ function AdminMembers({ ctx }) {
           groups: formGroups,
           group: formGroups[0] || null,
           role: safeRole,
+          position: safePosition,
           contact: form.contact || '',
         };
         // 비밀번호는 입력된 경우에만 변경
@@ -3527,6 +3594,7 @@ function AdminMembers({ ctx }) {
                 <th className="px-3 py-3 text-left font-semibold">전화번호</th>
                 <th className="px-3 py-3 text-left font-semibold">목장</th>
                 <th className="px-3 py-3 text-left font-semibold">권한</th>
+                <th className="px-3 py-3 text-left font-semibold">직분</th>
                 <th className="px-3 py-3 text-left font-semibold">상태</th>
                 <th className="px-3 py-3 text-right font-semibold">관리</th>
               </tr>
@@ -3535,6 +3603,7 @@ function AdminMembers({ ctx }) {
               {list.map(u => {
                 const ugs = userGroups(u);
                 const r = roleInfo(u.role);
+                const pos = positionInfo(userPosition(u));
                 const st = u.status || 'approved';
                 const sInfo = statusInfo(st);
                 const isPending = st === 'pending';
@@ -3554,6 +3623,9 @@ function AdminMembers({ ctx }) {
                     </td>
                     <td className="px-3 py-3 text-xs">
                       <span className={'px-2 py-0.5 rounded ' + (r.id === 'member' ? 'text-slate-600' : r.badgeCls)}>{r.name}</span>
+                    </td>
+                    <td className="px-3 py-3 text-xs">
+                      <span className={'px-2 py-0.5 rounded ' + (pos.id === 'saint' ? 'text-slate-600' : pos.badgeCls)}>{pos.name}</span>
                     </td>
                     <td className="px-3 py-3 text-xs">
                       <span className={'px-2 py-0.5 rounded ' + sInfo.badgeCls + ' font-semibold'}>{sInfo.name}</span>
@@ -3592,7 +3664,7 @@ function AdminMembers({ ctx }) {
       {creating && (
         <MemberFormModal
           mode="create"
-          initial={{ userId: '', email: '', password: '', name: '', groups: ['women'], role: 'member', contact: '' }}
+          initial={{ userId: '', email: '', password: '', name: '', groups: ['women'], role: 'member', position: 'saint', contact: '' }}
           canRoleAssign={canRoleAssign}
           onClose={() => setCreating(false)}
           onSave={async (form) => { const ok = await saveMember(form, true); if (ok) setCreating(false); }}
@@ -3601,7 +3673,7 @@ function AdminMembers({ ctx }) {
       {editing && (
         <MemberFormModal
           mode="edit"
-          initial={{ ...editing, password: '', groups: userGroups(editing) }}
+          initial={{ ...editing, password: '', groups: userGroups(editing), position: userPosition(editing) }}
           canRoleAssign={canRoleAssign}
           onClose={() => setEditing(null)}
           onSave={async (form) => { const ok = await saveMember(form, false); if (ok) setEditing(null); }}
@@ -3612,9 +3684,9 @@ function AdminMembers({ ctx }) {
 }
 
 function MemberFormModal({ mode, initial, onClose, onSave, canRoleAssign }) {
-  // 신규 등록 시 권한 부여 권한이 없으면 무조건 성도로 시작
+  // 신규 등록 시 권한 변경 권한이 없으면 무조건 일반사용자/성도로 시작
   const initialSafe = (mode === 'create' && !canRoleAssign)
-    ? { ...initial, role: 'member' }
+    ? { ...initial, role: 'member', position: 'saint' }
     : initial;
   const [form, setForm] = useState(initialSafe);
   const isNew = mode === 'create';
@@ -3643,17 +3715,27 @@ function MemberFormModal({ mode, initial, onClose, onSave, canRoleAssign }) {
         <Field label="전화번호 (선택)">
           <input value={form.contact || ''} onChange={e => upd('contact', e.target.value)} className={inputCls} placeholder="010-0000-0000"/>
         </Field>
-        <Field label={`목장 (최대 ${MAX_GROUPS}개)`} hint="관리권한자는 목장 없이도 가능">
+        <Field label={`목장 (최대 ${MAX_GROUPS}개)`} hint="관리자는 목장 없이도 가능">
           <GroupChips value={form.groups || []} onChange={(v) => upd('groups', v)} allowEmpty />
         </Field>
-        <Field label="권한" hint={canRoleAssign ? '권한 변경은 신중히 진행해주세요' : '권한 변경은 목사만 가능합니다'}>
-          <select value={form.role}
-                  onChange={e => upd('role', e.target.value)}
-                  disabled={!canRoleAssign}
-                  className={inputCls + (!canRoleAssign ? ' bg-stone-50 text-slate-500 cursor-not-allowed' : '')}>
-            {ROLES.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
-        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="권한" hint={canRoleAssign ? undefined : '관리자만 변경 가능'}>
+            <select value={form.role}
+                    onChange={e => upd('role', e.target.value)}
+                    disabled={!canRoleAssign}
+                    className={inputCls + (!canRoleAssign ? ' bg-stone-50 text-slate-500 cursor-not-allowed' : '')}>
+              {ROLES.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+          </Field>
+          <Field label="직분" hint={canRoleAssign ? undefined : '관리자만 변경 가능'}>
+            <select value={form.position || 'saint'}
+                    onChange={e => upd('position', e.target.value)}
+                    disabled={!canRoleAssign}
+                    className={inputCls + (!canRoleAssign ? ' bg-stone-50 text-slate-500 cursor-not-allowed' : '')}>
+              {POSITIONS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </Field>
+        </div>
         <div className="flex gap-2 justify-end mt-2">
           <button type="button" onClick={onClose} className={btnGhost}>취소</button>
           <button type="submit" className={btnPri}>{isNew ? '등록' : '저장'}</button>
