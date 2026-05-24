@@ -192,6 +192,10 @@
   const MessageCircle = mk('<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>');
   const Filter        = mk('<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>');
   const Church        = mk('<path d="M18 7v10"/><path d="M6 7v10"/><path d="M9.5 7H6L3 10v10h18V10l-3-3h-3.5"/><path d="M9 21V10h6v11"/><path d="M11 4h2"/><path d="M12 2v8"/>');
+  const Send          = mk('<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>');
+  const Music         = mk('<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>');
+  const Globe         = mk('<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>');
+  const Baby          = mk('<path d="M9 12h.01"/><path d="M15 12h.01"/><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/><path d="M19 6.3a9 9 0 0 1 1.8 3.9 2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1"/>');
   const Heart         = mk('<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>');
   const Shield        = mk('<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>');
   const Users         = mk('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>');
@@ -766,6 +770,7 @@ function ChurchApp() {
 
       <main className="pb-20">
         {route.name === 'home'     && <HomePage     ctx={ctx} />}
+        {route.name === 'about'    && <AboutPage    ctx={ctx} />}
         {route.name === 'login'    && <LoginPage    ctx={ctx} />}
         {route.name === 'signup'   && <SignupPage   ctx={ctx} />}
         {route.name === 'notices'  && <NoticesPage  ctx={ctx} />}
@@ -1124,6 +1129,7 @@ function Header({ ctx, navOpen, setNavOpen }) {
   const { settings, currentUser, isAdmin, canAdmin, setRoute, route, logout } = ctx;
   const navItems = [
     { id: 'home',    label: '홈',       icon: Home },
+    { id: 'about',   label: '교회소개', icon: Church },
     { id: 'notices', label: '공지사항', icon: Bell },
     { id: 'videos',  label: '예배영상', icon: Video },
     { id: 'qts',     label: 'QT 나눔',  icon: BookOpen },
@@ -1643,6 +1649,163 @@ function GroupChips({ value = [], onChange, allowEmpty = false, max = MAX_GROUPS
   );
 }
 
+/* ============================== 교회소개 ============================== */
+function AboutPage({ ctx }) {
+  const { settings } = ctx;
+
+  // 3S — 파송/섬김/구원
+  const threeS = [
+    { en: 'Sending', ko: '파송', icon: Send,  desc: '하나님이 부르신 사람을\n세워 세상으로 파송합니다.', color: '#5b8c3e', bg: '#f1f7eb' },
+    { en: 'Serving', ko: '섬김', icon: HandHeart, desc: '예수님의 사랑으로\n이웃을 섬깁니다.', color: '#1f9e8f', bg: '#e9f6f4' },
+    { en: 'Saving',  ko: '구원', icon: Heart, desc: '복음을 전하여\n영혼을 구원합니다.', color: '#2563b8', bg: '#e8f0fb' },
+  ];
+
+  // 5N — Newsong/Nest/Next Generation/Neighbor/Nations
+  const fiveN = [
+    { no: '①', en: 'Newsong', ko: '예배', icon: Music, desc: '하나님을 기쁘시게 하는 예배로 신앙의 중심을 세웁니다.', color: '#e8a02c', bg: '#fdf4e3' },
+    { no: '②', en: 'Nest', ko: '목장, 가정', icon: Home, desc: '목장과 가정을 통해 사랑의 공동체를 세우고 영적 성장을 돕습니다.', color: '#5b8c3e', bg: '#f1f7eb' },
+    { no: '③', en: 'Next Generation', ko: '다음세대', icon: Baby, desc: '다음세대를 믿음으로 세우고 하나님의 꿈을 심어줍니다.', color: '#8e44ad', bg: '#f4ecf8' },
+    { no: '④', en: 'Neighbor', ko: '지역사회', icon: Users, desc: '이웃과 함께하며 지역사회를 섬기고 선한 영향력을 끼칩니다.', color: '#2c5fa8', bg: '#e8f0fb' },
+    { no: '⑤', en: 'Nations', ko: '선교', icon: Globe, desc: '복음을 땅끝까지 전하며 열방을 섬기고 하나님의 나라를 확장합니다.', color: '#1f9e8f', bg: '#e9f6f4' },
+  ];
+
+  return (
+    <>
+      <PageHeader icon={Church} title="교회소개" subtitle={`${settings.churchName}을 소개합니다`} />
+
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 space-y-14">
+
+        {/* 인사말 / 본문 */}
+        <section className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+          <div className="bg-gradient-to-br from-[#0f1d3d] to-[#1a2c5a] px-6 sm:px-10 py-8 text-center">
+            <div className="inline-flex w-14 h-14 rounded-2xl bg-white/10 items-center justify-center mb-3">
+              <Church size={26} className="text-amber-300" />
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>
+              {settings.churchName}
+            </h2>
+            <p className="text-amber-200/90 text-sm mt-2">날마다 큐티하는 말씀공동체</p>
+          </div>
+          <div className="px-6 sm:px-10 py-8">
+            <p className="text-slate-700 leading-loose text-[15px] sm:text-base">
+              2017년 군포시 부곡동에 개척한 <span className="font-semibold text-[#0f1d3d]">기독교한국침례회</span> 정통 교단에 속한 작은교회입니다.
+              판교우리들교회<span className="text-slate-500">(김양재 목사)</span> 네트워크교회로 <span className="font-semibold text-[#0f1d3d]">날마다 큐티하는 교회</span>를 표방하며
+              큐티인으로 날마다 말씀으로 묵상하는 교회입니다.
+            </p>
+            <p className="text-slate-700 leading-loose text-[15px] sm:text-base mt-4">
+              <span className="font-semibold text-amber-700">One 메세지</span>를 지향하며 어른부터 주일학교까지 같은 본문, 같은 메세지를 큐티인을 통해 전하고 있습니다.
+              날마다 주시는 큐티인 말씀을 묵상하며 하루하루 내게 주시는 말씀으로 내 삶을 구속사적으로 해석하며,
+              기복이 아닌 <span className="font-semibold text-[#0f1d3d]">팔복의 은혜</span>를 누리고자 함께하는 말씀공동체입니다.
+            </p>
+            <p className="text-slate-700 leading-loose text-[15px] sm:text-base mt-4">
+              주중에는 <span className="font-semibold text-emerald-700">꿈을노래하는도서관</span>을 통하여 지역사회의 어린이들을 섬기며,
+              주말에는 하나님을 만나고 말씀을 듣는 예배처소가 되는 곳입니다.
+            </p>
+            <div className="mt-6 pt-5 border-t border-stone-100 text-right">
+              <span className="text-sm text-slate-500">담임목사 </span>
+              <span className="text-base font-bold text-[#0f1d3d]" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>유원형</span>
+            </div>
+          </div>
+        </section>
+
+        {/* 설립목표 타이틀 */}
+        <div className="text-center">
+          <div className="inline-flex items-center gap-3">
+            <span className="h-px w-10 bg-stone-300"></span>
+            <h2 className="text-xl sm:text-2xl font-bold text-[#0f1d3d]" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>
+              부곡이웃교회의 <span className="text-amber-600">설립목표</span>
+            </h2>
+            <span className="h-px w-10 bg-stone-300"></span>
+          </div>
+        </div>
+
+        {/* 3S */}
+        <section>
+          <div className="flex justify-center mb-6">
+            <span className="px-6 py-1.5 rounded-full bg-[#0f1d3d] text-white text-lg font-bold tracking-wider">3S</span>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-4">
+            {threeS.map((s, i) => {
+              const Icon = s.icon;
+              return (
+                <div key={s.en} className="relative">
+                  <div className="bg-white rounded-2xl border border-stone-200 p-6 text-center h-full shadow-sm hover:shadow-md transition-shadow">
+                    <div className="inline-flex w-16 h-16 rounded-full items-center justify-center mb-4" style={{ backgroundColor: s.bg }}>
+                      <Icon size={30} style={{ color: s.color }} />
+                    </div>
+                    <div className="text-xl font-bold" style={{ color: s.color, fontFamily: "'Nanum Gothic', sans-serif" }}>
+                      {s.en}
+                    </div>
+                    <div className="text-sm font-semibold text-slate-500 mt-0.5">({s.ko})</div>
+                    <div className="w-10 h-px bg-stone-200 mx-auto my-3"></div>
+                    <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{s.desc}</p>
+                  </div>
+                  {i < threeS.length - 1 && (
+                    <div className="hidden sm:flex absolute top-1/2 -right-2 -translate-y-1/2 z-10 w-5 h-5 rounded-full bg-white border border-stone-300 items-center justify-center">
+                      <ArrowRight size={12} className="text-slate-400" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* 5N */}
+        <section>
+          <div className="flex justify-center mb-6">
+            <span className="px-6 py-1.5 rounded-full bg-[#0f1d3d] text-white text-lg font-bold tracking-wider">5N</span>
+          </div>
+
+          {/* 중심 메세지 */}
+          <div className="max-w-md mx-auto mb-6 bg-gradient-to-br from-stone-50 to-white rounded-2xl border border-stone-200 p-6 text-center">
+            <div className="inline-flex w-12 h-12 rounded-full bg-[#0f1d3d] items-center justify-center mb-3">
+              <Church size={22} className="text-amber-300" />
+            </div>
+            <p className="text-[15px] font-semibold text-[#0f1d3d] leading-relaxed" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>
+              예배로 하나님을 기쁘시게 하고,<br/>이웃을 사랑하며,<br/>세상을 변화시키는 교회
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            {fiveN.map(n => {
+              const Icon = n.icon;
+              return (
+                <div key={n.en} className="rounded-2xl p-5 flex gap-4 items-start border" style={{ backgroundColor: n.bg, borderColor: n.color + '33' }}>
+                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm" style={{ border: `2px solid ${n.color}` }}>
+                    <Icon size={22} style={{ color: n.color }} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                      <span className="text-base font-bold" style={{ color: n.color }}>{n.no} {n.en}</span>
+                      <span className="text-xs font-semibold text-slate-500">({n.ko})</span>
+                    </div>
+                    <p className="text-sm text-slate-700 leading-relaxed mt-1">{n.desc}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* 마태복음 28:19-20 */}
+        <section className="bg-gradient-to-br from-[#0f1d3d] to-[#1a2c5a] rounded-2xl px-6 sm:px-10 py-10 text-center">
+          <Quote size={28} className="text-amber-300/60 mx-auto mb-4" />
+          <p className="text-white text-[15px] sm:text-lg leading-loose" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>
+            너희는 가서 모든 족속으로 제자를 삼아<br className="hidden sm:block"/>
+            아버지와 아들과 성령의 이름으로 세례를 베풀고<br/>
+            내가 너희에게 분부한 모든 것을 가르쳐 지키게 하라
+          </p>
+          <div className="inline-block mt-5 px-4 py-1 rounded-full bg-white/10 text-amber-200 text-sm font-semibold">
+            마태복음 28:19-20
+          </div>
+        </section>
+
+      </div>
+    </>
+  );
+}
+
 /* ============================== 홈 (랜딩) ============================== */
 function HomePage({ ctx }) {
   const { settings, notices, videos, prayers, events, currentUser, setRoute } = ctx;
@@ -1744,12 +1907,12 @@ function HomePage({ ctx }) {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 -mt-8 sm:-mt-10 relative z-10">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
           {[
+            { id: 'about',   label: '교회소개', icon: Church },
             { id: 'notices', label: '공지사항', icon: Bell },
             { id: 'videos',  label: '예배영상', icon: Video },
             { id: 'qts',     label: 'QT 나눔',  icon: BookOpen },
             { id: 'prayers', label: '기도게시판', icon: HandHeart },
             { id: 'events',  label: '교회 행사', icon: Calendar },
-            { id: currentUser ? 'me' : 'login', label: currentUser ? '마이페이지' : '로그인', icon: User },
           ].map(it => {
             const Icon = it.icon;
             return (
